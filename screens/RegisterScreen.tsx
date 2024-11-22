@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import CustomInput from '../components/Input';
 import CustomButton from '../components/Button';
 import axios from 'axios';
@@ -24,6 +24,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // State to track loading
 
   const handleRegister = async () => {
     if (!name || !email || !password) {
@@ -31,15 +32,29 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       return;
     }
 
+    setIsLoading(true); // Show loading indicator
+
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/register', { name, email, password });
+      const response = await axios.post('http://172.20.10.4:8000/api/register/', { name, email, password });
       console.log(response.data);
 
       Alert.alert('Success', 'Registration successful! Please log in.');
       navigation.navigate('Login'); // Navigate to the Login screen after successful registration
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration failed:', error);
-      Alert.alert('Error', 'Registration failed. Please try again.');
+
+      // Handle Axios network errors
+      if (error.message === 'Network Error') {
+        Alert.alert('Network Error', 'Please check your internet connection and try again.');
+      } else if (error.response && error.response.data) {
+        // If the server sends a specific error message
+        Alert.alert('Error', error.response.data.detail || 'Registration failed. Please try again.');
+      } else {
+        // Generic error message
+        Alert.alert('Error', 'Registration failed. Please try again.');
+      }
+    } finally {
+      setIsLoading(false); // Hide loading indicator after request
     }
   };
 
@@ -50,6 +65,10 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       <CustomInput label="Email" value={email} onChangeText={setEmail} />
       <CustomInput label="Password" value={password} onChangeText={setPassword} secureTextEntry />
       <CustomButton title="Register" onPress={handleRegister} />
+      
+      {/* Show loading indicator if registering */}
+      {isLoading && <ActivityIndicator size="large" color="#0000ff" style={styles.loader} />}
+      
       <CustomButton title="Back to Login" onPress={() => navigation.navigate('Login')} />
     </View>
   );
@@ -65,6 +84,9 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     marginBottom: 20,
+  },
+  loader: {
+    marginVertical: 20,
   },
 });
 
