@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import CustomInput from '../components/Input';
 import CustomButton from '../components/Button';
 import axios from 'axios';
 import { StackNavigationProp } from '@react-navigation/stack';
 
-// Define the parameter list for your navigation
 type RootStackParamList = {
   Home: undefined;
   Login: undefined;
@@ -15,9 +14,15 @@ type RootStackParamList = {
 
 type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
 
-// Props for the LoginScreen
 interface LoginScreenProps {
-  navigation: LoginScreenNavigationProp; // Explicitly define the navigation prop
+  navigation: LoginScreenNavigationProp;
+}
+
+// Define the expected response type
+interface LoginResponse {
+  success: boolean;
+  message: string;
+  token?: string;
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
@@ -26,12 +31,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   const handleLogin = async () => {
     try {
-      const response = await axios.post('https://yourapi.com/login', { email, password });
-      console.log(response.data);
-      // If login is successful, navigate to the home or prediction screen
-      navigation.navigate('Prediction'); // Or whatever screen you need to go to
+      const response = await axios.post<LoginResponse>('http://127.0.0.1:8000/api/login', { email, password });
+      
+      if (response.data.success) {
+        Alert.alert('Success', response.data.message);
+        navigation.navigate('Prediction'); // Navigate to the Prediction screen
+      } else {
+        Alert.alert('Error', 'Invalid credentials. Please try again.');
+      }
     } catch (error) {
       console.error('Login failed:', error);
+      Alert.alert('Error', 'An error occurred. Please try again.');
     }
   };
 

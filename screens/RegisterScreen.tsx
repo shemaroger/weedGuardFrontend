@@ -32,7 +32,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
     }
 
     try {
-      const response = await axios.post('https://yourapi.com/register', { name, email, password });
+      const response = await axios.post('http://127.0.0.1:8000/api/register', { name, email, password });
       console.log(response.data);
 
       Alert.alert('Success', 'Registration successful! Please log in.');
