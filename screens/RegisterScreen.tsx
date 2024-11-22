@@ -35,7 +35,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
     setIsLoading(true); // Show loading indicator
 
     try {
-      const response = await axios.post('http://172.20.10.4:8000/api/register/', { name, email, password });
+      const response = await axios.post('http://127.0.0.1:8000/api/register/', { name, email, password });
       console.log(response.data);
 
       Alert.alert('Success', 'Registration successful! Please log in.');
