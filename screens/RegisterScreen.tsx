@@ -29,32 +29,48 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const handleRegister = async () => {
     if (!name || !email || !password) {
       Alert.alert('Error', 'All fields are required.');
+      console.log('[RegisterScreen] Validation Error: Missing fields');
       return;
     }
 
     setIsLoading(true); // Show loading indicator
 
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/register/', { name, email, password });
-      console.log(response.data);
+      console.log('[RegisterScreen] Attempting registration with:', {
+        name,
+        email,
+        password,
+      });
 
+      const response = await axios.post('http://172.20.10.4:8000/api/register/', { name, email, password });
+      
+      console.log('[RegisterScreen] Registration successful:', response.data);
       Alert.alert('Success', 'Registration successful! Please log in.');
+      
       navigation.navigate('Login'); // Navigate to the Login screen after successful registration
     } catch (error: any) {
-      console.error('Registration failed:', error);
+      console.error('[RegisterScreen] Registration failed:', error);
 
       // Handle Axios network errors
       if (error.message === 'Network Error') {
+        console.log('[RegisterScreen] Network Error details:', error);
         Alert.alert('Network Error', 'Please check your internet connection and try again.');
-      } else if (error.response && error.response.data) {
-        // If the server sends a specific error message
+      } else if (error.response) {
+        // Server responded with an error status code
+        console.log('[RegisterScreen] Server responded with error:', {
+          status: error.response.status,
+          data: error.response.data,
+        });
+
         Alert.alert('Error', error.response.data.detail || 'Registration failed. Please try again.');
       } else {
-        // Generic error message
+        // Other errors (e.g., timeout)
+        console.log('[RegisterScreen] Other error details:', error);
         Alert.alert('Error', 'Registration failed. Please try again.');
       }
     } finally {
       setIsLoading(false); // Hide loading indicator after request
+      console.log('[RegisterScreen] Registration request completed');
     }
   };
 
