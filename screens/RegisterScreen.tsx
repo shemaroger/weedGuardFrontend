@@ -42,11 +42,21 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         password,
       });
 
-      const response = await axios.post('http://172.20.10.4:8000/api/register/', { name, email, password });
-      
+      const response = await axios.post(
+        'http://192.168.3.116:8000/api/user/',
+        {
+          name,
+          email,
+          password,
+        },
+        {
+          timeout: 10000, // Set timeout to 10 seconds
+        }
+      );
+
       console.log('[RegisterScreen] Registration successful:', response.data);
       Alert.alert('Success', 'Registration successful! Please log in.');
-      
+
       navigation.navigate('Login'); // Navigate to the Login screen after successful registration
     } catch (error: any) {
       console.error('[RegisterScreen] Registration failed:', error);
