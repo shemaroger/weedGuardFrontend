@@ -1,14 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../App'; // Adjust the path based on your project structure
-import apiClient from '../services/api'; // Adjust the path for your service
-
-type RegisterScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Register'>;
+import apiClient from '../services/api'; // Adjust the path based on your directory structure
 
 const RegisterScreen = () => {
-  const navigation = useNavigation<RegisterScreenNavigationProp>();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,12 +11,11 @@ const RegisterScreen = () => {
     const data = { name, email, password };
 
     try {
-      const response = await apiClient.post('user/', data); // API endpoint for registration
-      Alert.alert('Success', 'Registration successful!');
-      console.log('Register response:', response.data);
-      navigation.navigate('Login'); // Navigate to login after registration
+      const response = await apiClient.post('user/', data); // Use relative endpoint
+      Alert.alert('Success', 'User registered successfully!');
+      console.log('Response:', response.data);
     } catch (error) {
-      console.error('Register error:', error);
+      console.error('Error:', error);
       if (error.response && error.response.data) {
         Alert.alert('Error', error.response.data.message || 'Registration failed');
       } else {
@@ -57,9 +50,6 @@ const RegisterScreen = () => {
       />
       <TouchableOpacity style={styles.button} onPress={handleRegister}>
         <Text style={styles.buttonText}>Register</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.link}>Already have an account? Login here</Text>
       </TouchableOpacity>
     </View>
   );
@@ -103,10 +93,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  link: {
-    marginTop: 15,
-    color: '#007bff',
-    textDecorationLine: 'underline',
   },
 });
