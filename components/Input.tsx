@@ -1,14 +1,14 @@
+// CustomInput.tsx
 import React from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { TextInput, View, Text, StyleSheet, TextInputProps } from 'react-native';
 
-export interface InputProps {
+interface CustomInputProps extends TextInputProps {
   label: string;
   value: string;
   onChangeText: (text: string) => void;
-  secureTextEntry?: boolean;
 }
 
-const CustomInput: React.FC<InputProps> = ({ label, value, onChangeText, secureTextEntry }) => {
+const CustomInput: React.FC<CustomInputProps> = ({ label, value, onChangeText, ...rest }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
@@ -16,7 +16,7 @@ const CustomInput: React.FC<InputProps> = ({ label, value, onChangeText, secureT
         style={styles.input}
         value={value}
         onChangeText={onChangeText}
-        secureTextEntry={secureTextEntry}
+        {...rest} // Pass other props like editable, secureTextEntry
       />
     </View>
   );
@@ -24,19 +24,17 @@ const CustomInput: React.FC<InputProps> = ({ label, value, onChangeText, secureT
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
     marginBottom: 16,
   },
   label: {
-    fontSize: 16,
-    marginBottom: 8,
+    fontSize: 14,
+    marginBottom: 4,
   },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 4,
     padding: 8,
-    fontSize: 16,
   },
 });
 
