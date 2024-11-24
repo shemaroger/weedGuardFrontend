@@ -24,10 +24,10 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Axios instance for configuration
+  // Axios instance with baseURL
   const axiosInstance = axios.create({
-    baseURL: 'http://172.20.10.4:8000', // Update this to match your server's configuration
-    timeout: 10000, // 10 seconds timeout
+    baseURL: 'http://172.20.10.4:8000', // Update this with your backend server's address
+    timeout: 20000, // 20 seconds timeout
   });
 
   const handleRegister = async () => {
@@ -39,11 +39,8 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
     setIsLoading(true);
 
     try {
-      const response = await axiosInstance.post('/api/users/', {
-        name,
-        email,
-        password,
-      });
+      console.log('Attempting to register:', { name, email, password });
+      const response = await axiosInstance.post('/api/users/', { name, email, password });
       console.log('Server Response:', response.data);
       Alert.alert('Success', 'Registration successful! Please log in.');
       navigation.navigate('Login');
@@ -54,7 +51,10 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         if (!error.response) {
           Alert.alert('Connection Error', 'Check your internet connection and try again.');
         } else {
-          Alert.alert('Error', error.response.data?.detail || 'Registration failed. Please try again.');
+          const errorMessage =
+            error.response.data?.detail ||
+            'Registration failed due to an issue on the server. Please try again later.';
+          Alert.alert('Error', errorMessage);
         }
       } else {
         console.error('Unexpected Error:', err);
@@ -62,6 +62,22 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const testConnection = async () => {
+    try {
+      const response = await fetch('http://172.20.10.4:8000/');
+      if (response.ok) {
+        console.log('Connection Test Successful:', response.status);
+        Alert.alert('Success', 'Backend server is reachable.');
+      } else {
+        console.error('Connection Test Failed:', response.status);
+        Alert.alert('Error', 'Unable to reach backend server. Check the URL or server status.');
+      }
+    } catch (error) {
+      console.error('Connection Test Error:', error);
+      Alert.alert('Error', 'Network test failed. Check your connection.');
     }
   };
 
@@ -84,6 +100,11 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       />
       {isLoading && <ActivityIndicator size="large" color="#0000ff" />}
       <CustomButton
+        title="Test Connection"
+        onPress={testConnection}
+        disabled={isLoading}
+      />
+      <CustomButton
         title="Back to Login"
         onPress={() => navigation.navigate('Login')}
         disabled={isLoading}
@@ -101,8 +122,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
+    fontWeight: 'bold',
     marginBottom: 20,
   },
 });
 
 export default RegisterScreen;
+
+
