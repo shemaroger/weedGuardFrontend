@@ -36,6 +36,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           onPress={() => navigation.navigate('Register')}
           style={styles.button}
         />
+         <CustomButton
+          title="WeedGuard"
+          onPress={() => navigation.navigate('WeedGuard')}
+          style={styles.button}
+        />
       </View>
     </ImageBackground>
   );

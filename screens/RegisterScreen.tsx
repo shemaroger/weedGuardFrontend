@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native'; // Import navigation hook
 import apiClient from '../services/api'; // Adjust the path based on your directory structure
 
 const RegisterScreen = () => {
+  const navigation = useNavigation(); // Hook to access navigation
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleRegister = async () => {
-    const data = { name, email, password };
+    const data = { fullname: name, email, password, role: 'farmer' }; // Change 'name' to 'fullname'
 
     try {
-      const response = await apiClient.post('user/', data); // Use relative endpoint
+      const response = await apiClient.post('user/', data); // Use the correct endpoint
       Alert.alert('Success', 'User registered successfully!');
       console.log('Response:', response.data);
+      navigation.navigate('Login'); // Navigate to Login screen after success
     } catch (error) {
       console.error('Error:', error);
       if (error.response && error.response.data) {
@@ -29,7 +32,7 @@ const RegisterScreen = () => {
       <Text style={styles.title}>Register</Text>
       <TextInput
         style={styles.input}
-        placeholder="Name"
+        placeholder="Full Name"
         value={name}
         onChangeText={setName}
       />
@@ -50,6 +53,11 @@ const RegisterScreen = () => {
       />
       <TouchableOpacity style={styles.button} onPress={handleRegister}>
         <Text style={styles.buttonText}>Register</Text>
+      </TouchableOpacity>
+
+      {/* Link to login screen */}
+      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+        <Text style={styles.link}>Already have an account? Login</Text>
       </TouchableOpacity>
     </View>
   );
@@ -93,5 +101,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  link: {
+    marginTop: 10,
+    color: '#007bff',
+    fontSize: 16,
+    textDecorationLine: 'underline',
   },
 });
