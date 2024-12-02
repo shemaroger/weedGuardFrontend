@@ -1,17 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { RouteProp } from '@react-navigation/native';
 import apiClient from '../services/api';
 
-const PredictionDetailsScreen = ({ route }) => {
+interface PredictionDetails {
+  site_name: string;
+  location: string;
+  result: string;
+  timestamp: string;
+}
+
+type PredictionDetailsRouteProp = RouteProp<{ PredictionDetails: { id: string } }, 'PredictionDetails'>;
+
+const PredictionDetailsScreen: React.FC<{ route: PredictionDetailsRouteProp }> = ({ route }) => {
   const { id } = route.params;
-  const [details, setDetails] = useState(null);
+  const [details, setDetails] = useState<PredictionDetails | null>(null);
 
   const fetchDetails = async () => {
     try {
-      const response = await apiClient.get(`predictions/${id}/`);
+      const response = await apiClient.get<PredictionDetails>(`predictions/${id}/`);
       setDetails(response.data);
     } catch (error) {
-      console.error(error);
+      console.error('Failed to fetch prediction details:', error);
     }
   };
 
