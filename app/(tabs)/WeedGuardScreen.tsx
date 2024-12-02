@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import MapView, { Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { Camera } from 'expo-camera';
+import { Camera, CameraType } from 'expo-camera';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 interface LocationState extends Region {
@@ -27,7 +27,7 @@ const WeedGuardScreen: React.FC = () => {
   const [submitDisabled, setSubmitDisabled] = useState<boolean>(true);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   
-  const cameraRef = useRef<typeof Camera | null>(null);
+  const cameraRef = useRef<Camera | null>(null);
 
   // Request permissions and fetch location
   useEffect(() => {
@@ -55,15 +55,20 @@ const WeedGuardScreen: React.FC = () => {
 
   // Capture image
   const captureImage = async () => {
-    if (cameraRef.current) {
-      const photo = await cameraRef.current.takePictureAsync();
-      const manipulatedImage = await manipulateAsync(
-        photo.uri,
-        [{ resize: { width: 800 } }], 
-        { compress: 1, format: SaveFormat.PNG }
-      );
-      setImageUri(manipulatedImage.uri);
-      await validateGreenColor(manipulatedImage.uri);
+    try {
+      if (cameraRef.current) {
+        const photo = await cameraRef.current.takePictureAsync();
+        const manipulatedImage = await manipulateAsync(
+          photo.uri,
+          [{ resize: { width: 800 } }], 
+          { compress: 1, format: SaveFormat.PNG }
+        );
+        setImageUri(manipulatedImage.uri);
+        await validateGreenColor(manipulatedImage.uri);
+      }
+    } catch (error) {
+      console.error('Image capture error:', error);
+      setErrorMessage('Failed to capture image');
     }
   };
 
@@ -86,15 +91,12 @@ const WeedGuardScreen: React.FC = () => {
 
   // Simplified green color validation
   const validateImageGreenness = async (uri: string): Promise<boolean> => {
-    // Placeholder for more advanced image processing
     try {
       const manipulatedImage = await manipulateAsync(
         uri,
-        [{ resize: { width: 100, height: 100 } }],
+        [{ resize: { width: 100, height: 100 } }], // You can adjust the size to reduce complexity
         { compress: 1, format: SaveFormat.PNG }
       );
-      
-      // More sophisticated green detection would go here
       return true; // Modify this with actual validation logic
     } catch (error) {
       console.error('Green validation error:', error);
@@ -104,7 +106,6 @@ const WeedGuardScreen: React.FC = () => {
 
   const handleSubmit = () => {
     if (!submitDisabled && location) {
-      // Implement submission logic
       console.log('Submitting:', {
         location: {
           latitude: location.latitude,
@@ -168,7 +169,7 @@ const WeedGuardScreen: React.FC = () => {
             <Camera 
               style={styles.camera} 
               ref={cameraRef}
-              type={Camera.Constants.Type.back}
+              type={CameraType.back}
             />
             <TouchableOpacity 
               style={styles.captureButton} 
@@ -273,41 +274,44 @@ const styles = StyleSheet.create({
     backgroundColor: '#007bff',
     paddingVertical: 10,
     paddingHorizontal: 20,
-    borderRadius: 50,
+    borderRadius: 8,
   },
   captureButtonText: {
-    color: '#fff',
+    color: 'white',
     fontSize: 16,
+    fontWeight: 'bold',
   },
   imagePreview: {
-    width: '100%',
-    height: 200,
-    marginBottom: 20,
+    width: 150,
+    height: 150,
     borderRadius: 8,
-    resizeMode: 'cover',
+    marginBottom: 20,
   },
   errorText: {
     color: 'red',
     marginBottom: 20,
+    fontSize: 14,
   },
   submitButton: {
     backgroundColor: '#28a745',
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
+    marginTop: 10,
   },
   disabledButton: {
     backgroundColor: '#ccc',
   },
   submitButtonText: {
-    color: '#fff',
+    color: 'white',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
   footer: {
-    marginTop: 20,
     fontSize: 12,
     color: '#555',
+    marginTop: 20,
+    textAlign: 'center',
   },
 });
 
