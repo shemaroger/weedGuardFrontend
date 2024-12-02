@@ -1,31 +1,21 @@
 {
   "compilerOptions": {
-    "target": "esnext",                 // Use the latest JavaScript features
-    "module": "esnext",                 // Use ES modules
-    "jsx": "react-native",              // JSX is tailored for React Native
-    "strict": true,                     // Enable strict type-checking
-    "noEmit": true,                     // Do not emit compiled JavaScript files
-    "skipLibCheck": true,               // Skip checking of .d.ts files for performance
-    "moduleResolution": "node",         // Resolve modules like Node.js
-    "resolveJsonModule": true,          // Allow importing JSON files
-    "isolatedModules": true,            // Ensure each file can be transpiled separately
-    "esModuleInterop": true,            // Enable interoperability for CommonJS modules
-    "allowSyntheticDefaultImports": true, // Allow default imports from modules with no default export
-    "baseUrl": ".",                     // Set base URL for module resolution
-    "paths": {                          // Aliases for directories
-      "@assets/*": ["assets/*"],
-      "@components/*": ["components/*"],
-      "@constants/*": ["constants/*"],
-      "@hooks/*": ["hooks/*"],
-      "@services/*": ["services/*"],
-      "@styles/*": ["styles/*"],
-      "@utils/*": ["utils/*"],
-      "@types/*": ["types/*"]
-    },
-    "typeRoots": ["node_modules/@types"], // Specify types folder
-    "lib": ["esnext"]                    // Specify library files to include
+    "strict": true,
+    "jsx": "react-native",
+    "allowJs": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": "./",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ]
+    }
   },
-  "include": ["**/*.ts", "**/*.tsx"],    // Include TypeScript and TSX files
-  "exclude": ["node_modules", "babel.config.js", "metro.config.js"], // Exclude unnecessary files
+  "exclude": [
+    "node_modules"
+  ],
   "extends": "expo/tsconfig.base"
 }

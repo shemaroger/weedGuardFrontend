@@ -1,15 +1,8 @@
-// App.js (Main Entry)
-
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import DrawerNavigator from './navigation/DrawerNavigator'; // Import your DrawerNavigator
+import Layout from './app/_layout';
 
-const App = () => {
-  return (
-    <NavigationContainer>
-      <DrawerNavigator />
-    </NavigationContainer>
-  );
+const App: React.FC = () => {
+  return <Layout />;
 };
 
 export default App;
