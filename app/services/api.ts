@@ -16,11 +16,12 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   async (config) => {
     try {
-      // Retrieve token from AsyncStorage
       const token = await AsyncStorage.getItem('authToken');
+      console.log('Retrieved token:', token); // Log the token
       if (token) {
-        // Add the token to the Authorization header
         config.headers.Authorization = `Bearer ${token}`;
+      } else {
+        console.warn('No token found');
       }
     } catch (error) {
       console.error('Error retrieving token:', error);
@@ -45,7 +46,6 @@ apiClient.interceptors.response.use(
       console.error(
         `Response Error: Status ${error.response.status} - ${error.response.data.detail || error.message}`
       );
-      // Handle specific status codes (e.g., 401, 403)
       if (error.response.status === 401) {
         console.warn('Unauthorized. Redirecting to login...');
         // Optional: Redirect to the login screen or clear stored tokens
