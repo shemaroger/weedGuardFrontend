@@ -13,6 +13,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import apiClient from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type RootStackParamList = {
   Login: undefined;
@@ -51,21 +52,37 @@ const LoginScreen: React.FC = () => {
 
     try {
       const response = await apiClient.post('login/', { email, password });
-      if (response.data) {
+
+      if (response.data?.access_token) {
+        await AsyncStorage.setItem('authToken', response.data.access_token);
         navigation.navigate('Tabs', { screen: 'Home' });
+      } else {
+        setError('Login failed. Please try again.');
       }
-    } catch (error) {
-      setError(error.response?.data?.error || 'Login failed. Please try again.');
+    } catch (error: any) {
+      if (error.response?.data?.detail) {
+        setError(error.response.data.detail); // Show specific error from the backend
+      } else {
+        setError('An unexpected error occurred. Please try again later.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Clear error message when user starts typing
+  const handleChangeEmail = (text: string) => {
+    setEmail(text);
+    setError(null); // Clear error on input change
+  };
+
+  const handleChangePassword = (text: string) => {
+    setPassword(text);
+    setError(null); // Clear error on input change
+  };
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.innerContainer}>
           <Text style={styles.title}>Welcome Back</Text>
@@ -75,7 +92,7 @@ const LoginScreen: React.FC = () => {
               style={[styles.input, error ? styles.inputError : null]}
               placeholder="Email"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={handleChangeEmail}
               autoCapitalize="none"
               keyboardType="email-address"
             />
@@ -83,7 +100,7 @@ const LoginScreen: React.FC = () => {
               style={[styles.input, error ? styles.inputError : null]}
               placeholder="Password"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={handleChangePassword}
               secureTextEntry
             />
             {error && <Text style={styles.errorText}>{error}</Text>}
@@ -92,11 +109,7 @@ const LoginScreen: React.FC = () => {
               onPress={handleLogin}
               disabled={loading}
             >
-              {loading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.loginButtonText}>Log In</Text>
-              )}
+              {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.loginButtonText}>Log In</Text>}
             </TouchableOpacity>
           </View>
           <View style={styles.signupContainer}>

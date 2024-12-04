@@ -1,7 +1,8 @@
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://192.168.3.116:8000/api/';
+//app/services/api.ts
+import axios from 'axios';
+
+const API_BASE_URL = 'http://192.168.8.107:8000/api/';
 
 // Create an Axios instance
 const apiClient = axios.create({
@@ -12,20 +13,10 @@ const apiClient = axios.create({
   },
 });
 
-// Add a request interceptor to include authentication tokens
+// Add a request interceptor (optional)
 apiClient.interceptors.request.use(
-  async (config) => {
-    try {
-      const token = await AsyncStorage.getItem('authToken');
-      console.log('Retrieved token:', token); // Log the token
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      } else {
-        console.warn('No token found');
-      }
-    } catch (error) {
-      console.error('Error retrieving token:', error);
-    }
+  (config) => {
+    // Modify the request config if needed, e.g., add authentication tokens
     console.log('Request:', config);
     return config;
   },
@@ -35,24 +26,14 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Add a response interceptor for better error handling
+// Add a response interceptor (optional)
 apiClient.interceptors.response.use(
   (response) => {
     console.log('Response:', response);
     return response;
   },
   (error) => {
-    if (error.response) {
-      console.error(
-        `Response Error: Status ${error.response.status} - ${error.response.data.detail || error.message}`
-      );
-      if (error.response.status === 401) {
-        console.warn('Unauthorized. Redirecting to login...');
-        // Optional: Redirect to the login screen or clear stored tokens
-      }
-    } else {
-      console.error('Response Error:', error.message);
-    }
+    console.error('Response Error:', error.response || error.message);
     return Promise.reject(error);
   }
 );

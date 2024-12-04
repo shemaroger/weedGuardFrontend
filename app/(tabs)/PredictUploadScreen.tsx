@@ -11,6 +11,7 @@ import MapView, { Marker, MapPressEvent } from 'react-native-maps';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
   const [siteName, setSiteName] = useState<string>('');
@@ -20,6 +21,7 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
   const [longitude, setLongitude] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  // Fetch location on initial load
   useEffect(() => {
     const fetchLocation = async () => {
       try {
@@ -46,6 +48,7 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
     fetchLocation();
   }, []);
 
+  // Image picker
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
@@ -64,6 +67,25 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
     }
   };
 
+  // Camera picker
+  const takePicture = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('Permission Denied', 'You need to enable permissions to use the camera.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets?.length > 0) {
+      setImage(result.assets[0].uri);
+    }
+  };
+
+  // Map press handler
   const handleMapPress = (event: MapPressEvent) => {
     const { latitude, longitude } = event.nativeEvent.coordinate;
     setLatitude(latitude);
@@ -71,6 +93,7 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
     setLocation(`Lat: ${latitude}, Lon: ${longitude}`);
   };
 
+  // Upload prediction to backend
   const uploadPrediction = async () => {
     if (!image || !siteName || !location || location === 'Fetching location...') {
       Alert.alert('Error', 'Please fill in all fields and select an image.');
@@ -90,8 +113,13 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
     formData.append('farmer_id', farmerId);
 
     try {
+      const token = await AsyncStorage.getItem('authToken'); // Retrieve token from AsyncStorage
+
       const response = await apiClient.post('predict/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: token ? `Bearer ${token}` : '',
+        },
       });
 
       if (response.status === 201) {
@@ -101,7 +129,7 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
           `Prediction uploaded successfully!\nResult: ${data.result}\nLocation: ${data.location}\nSite Name: ${data.site_name}`
         );
         setSiteName('');
-        setLocation('');
+        setLocation('Fetching location...');
         setImage(null);
       } else {
         throw new Error(response.data.error || 'Unknown error occurred');
@@ -144,6 +172,10 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
         <Text style={styles.buttonText}>Pick an Image</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity onPress={takePicture} style={styles.button}>
+        <Text style={styles.buttonText}>Take a Picture</Text>
+      </TouchableOpacity>
+
       {image && (
         <View style={styles.filePreview}>
           <Text style={styles.fileText}>File: {image.split('/').pop()}</Text>
@@ -180,7 +212,7 @@ const styles = StyleSheet.create({
   },
   map: {
     width: '100%',
-    height: 150, // Reduced height
+    height: 150, // Reduced height for compact display
     borderRadius: 10,
     marginVertical: 10,
   },
@@ -197,23 +229,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f1f1',
     borderRadius: 5,
   },
-  fileText: {
-    color: '#555',
-    fontStyle: 'italic',
-  },
+  fileText: { color: '#333', fontSize: 14 },
   uploadButton: {
-    backgroundColor: '#28a745',
-    padding: 10,
+    backgroundColor: '#4CAF50',
+    padding: 15,
     borderRadius: 5,
     marginTop: 20,
+    alignItems: 'center',
   },
-  uploadButtonText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
+  uploadButtonText: { color: '#fff', fontSize: 16 },
   disabledButton: {
-    backgroundColor: '#cccccc',
+    backgroundColor: '#B0B0B0',
   },
 });
 
