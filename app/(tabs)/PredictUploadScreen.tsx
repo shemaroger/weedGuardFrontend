@@ -6,6 +6,7 @@ import {
   Alert,
   StyleSheet,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import MapView, { Marker, MapPressEvent } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -48,11 +49,14 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
     fetchLocation();
   }, []);
 
-  // Image picker
+  // Handle image picker
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
-      Alert.alert('Permission Denied', 'You need to enable permissions to select an image.');
+      Alert.alert(
+        'Permission Denied',
+        'You need to enable permissions to select an image.'
+      );
       return;
     }
 
@@ -67,7 +71,7 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
     }
   };
 
-  // Camera picker
+  // Handle camera input
   const takePicture = async () => {
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
     if (!permissionResult.granted) {
@@ -85,7 +89,7 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
     }
   };
 
-  // Map press handler
+  // Handle map press to set custom coordinates
   const handleMapPress = (event: MapPressEvent) => {
     const { latitude, longitude } = event.nativeEvent.coordinate;
     setLatitude(latitude);
@@ -113,8 +117,7 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
     formData.append('farmer_id', farmerId);
 
     try {
-      const token = await AsyncStorage.getItem('authToken'); // Retrieve token from AsyncStorage
-
+      const token = await AsyncStorage.getItem('authToken');
       const response = await apiClient.post('predict/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -187,9 +190,11 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
         style={[styles.uploadButton, isLoading && styles.disabledButton]}
         disabled={isLoading}
       >
-        <Text style={styles.uploadButtonText}>
-          {isLoading ? 'Uploading...' : 'Upload Prediction'}
-        </Text>
+        {isLoading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.uploadButtonText}>Upload Prediction</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -212,7 +217,7 @@ const styles = StyleSheet.create({
   },
   map: {
     width: '100%',
-    height: 150, // Reduced height for compact display
+    height: 150,
     borderRadius: 10,
     marginVertical: 10,
   },
