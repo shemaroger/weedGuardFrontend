@@ -1,7 +1,7 @@
 import axios, { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://192.168.8.107:8000/api/';
+const API_BASE_URL = 'http://192.168.3.116:8000/api/';
 let isRefreshing = false;
 let refreshSubscribers: Array<(token: string) => void> = [];
 
@@ -14,12 +14,10 @@ const onRefreshed = (token: string) => {
   refreshSubscribers = [];
 };
 
-// Function to get access token
 const getAccessToken = async (): Promise<string | null> => {
   return await AsyncStorage.getItem('accessToken');
 };
 
-// Function to refresh the access token
 const refreshAccessToken = async (): Promise<string> => {
   if (!isRefreshing) {
     isRefreshing = true;
@@ -38,7 +36,6 @@ const refreshAccessToken = async (): Promise<string> => {
       return access;
     } catch (error) {
       isRefreshing = false;
-      console.error('Failed to refresh token:', error);
       throw error;
     }
   }
@@ -48,37 +45,25 @@ const refreshAccessToken = async (): Promise<string> => {
   });
 };
 
-// Create Axios instance
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Add request interceptor
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     const token = await getAccessToken();
     if (token) {
       config.headers.set('Authorization', `Bearer ${token}`);
     }
-    console.log('Request:', config);
     return config;
   },
-  (error) => {
-    console.error('Request Error:', error);
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Add response interceptor
 apiClient.interceptors.response.use(
-  (response: AxiosResponse) => {
-    console.log('Response:', response);
-    return response;
-  },
+  (response: AxiosResponse) => response,
   async (error) => {
     const originalRequest = error.config;
 
@@ -90,15 +75,11 @@ apiClient.interceptors.response.use(
         originalRequest.headers.set('Authorization', `Bearer ${newAccessToken}`);
         return apiClient(originalRequest);
       } catch (refreshError) {
-        console.error('Token refresh failed:', refreshError);
         return Promise.reject(refreshError);
       }
     }
-
-    console.error('Response Error:', error.response || error.message);
     return Promise.reject(error);
   }
 );
-
 
 export default apiClient;

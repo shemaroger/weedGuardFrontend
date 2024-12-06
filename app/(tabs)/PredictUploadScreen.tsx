@@ -21,6 +21,7 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [predictionResult, setPredictionResult] = useState<string | null>(null);
 
   // Fetch location on initial load
   useEffect(() => {
@@ -127,10 +128,16 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
 
       if (response.status === 201) {
         const data = response.data;
+        // Set the prediction result to state
+        setPredictionResult(data.result);
+
+        // Display success message with prediction details
         Alert.alert(
           'Success',
           `Prediction uploaded successfully!\nResult: ${data.result}\nLocation: ${data.location}\nSite Name: ${data.site_name}`
         );
+
+        // Reset form fields
         setSiteName('');
         setLocation('Fetching location...');
         setImage(null);
@@ -196,6 +203,13 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
           <Text style={styles.uploadButtonText}>Upload Prediction</Text>
         )}
       </TouchableOpacity>
+
+      {predictionResult && (
+        <View style={styles.resultContainer}>
+          <Text style={styles.resultTitle}>Prediction Result:</Text>
+          <Text style={styles.resultText}>{predictionResult}</Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -245,6 +259,20 @@ const styles = StyleSheet.create({
   uploadButtonText: { color: '#fff', fontSize: 16 },
   disabledButton: {
     backgroundColor: '#B0B0B0',
+  },
+  resultContainer: {
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: '#e1f7e1',
+    borderRadius: 5,
+  },
+  resultTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  resultText: {
+    fontSize: 14,
+    marginTop: 5,
   },
 });
 
