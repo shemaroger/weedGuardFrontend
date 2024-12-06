@@ -11,6 +11,7 @@ import {
 import MapView, { Marker, MapPressEvent } from 'react-native-maps';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator'; // Import image manipulator
 import apiClient from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -50,7 +51,7 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
     fetchLocation();
   }, []);
 
-  // Handle image picker
+  // Handle image picker (gallery)
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
@@ -68,7 +69,8 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
     });
 
     if (!result.canceled && result.assets?.length > 0) {
-      setImage(result.assets[0].uri);
+      const resizedImage = await resizeImage(result.assets[0].uri);
+      setImage(resizedImage);
     }
   };
 
@@ -86,7 +88,23 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
     });
 
     if (!result.canceled && result.assets?.length > 0) {
-      setImage(result.assets[0].uri);
+      const resizedImage = await resizeImage(result.assets[0].uri);
+      setImage(resizedImage);
+    }
+  };
+
+  // Function to resize the image
+  const resizeImage = async (uri: string) => {
+    try {
+      const manipResult = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 800 } }], // Resize image to width of 800px, height will adjust proportionally
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      return manipResult.uri;
+    } catch (error) {
+      console.error('Error resizing image:', error);
+      return uri; // Return the original URI if resizing fails
     }
   };
 
@@ -263,17 +281,11 @@ const styles = StyleSheet.create({
   resultContainer: {
     marginTop: 20,
     padding: 10,
-    backgroundColor: '#e1f7e1',
+    backgroundColor: '#e7f7e7',
     borderRadius: 5,
   },
-  resultTitle: {
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  resultText: {
-    fontSize: 14,
-    marginTop: 5,
-  },
+  resultTitle: { fontWeight: 'bold', fontSize: 16 },
+  resultText: { fontSize: 14, color: '#333' },
 });
 
 export default PredictUploadScreen;
