@@ -19,6 +19,7 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
   const [siteName, setSiteName] = useState<string>('');
   const [location, setLocation] = useState<string>('Fetching location...');
   const [image, setImage] = useState<string | null>(null);
+  const [imageSource, setImageSource] = useState<'camera' | 'gallery' | null>(null); // New state for image source
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -71,6 +72,7 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
     if (!result.canceled && result.assets?.length > 0) {
       const resizedImage = await resizeImage(result.assets[0].uri);
       setImage(resizedImage);
+      setImageSource('gallery'); // Set the image source to gallery
     }
   };
 
@@ -90,6 +92,7 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
     if (!result.canceled && result.assets?.length > 0) {
       const resizedImage = await resizeImage(result.assets[0].uri);
       setImage(resizedImage);
+      setImageSource('camera'); // Set the image source to camera
     }
   };
 
@@ -205,7 +208,12 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
       </TouchableOpacity>
 
       {image && (
-        <View style={styles.filePreview}>
+        <View
+          style={[
+            styles.filePreview,
+            imageSource === 'camera' || imageSource === 'gallery' ? styles.greenBorder : {},
+          ]}
+        >
           <Text style={styles.fileText}>File: {image.split('/').pop()}</Text>
         </View>
       )}
@@ -254,38 +262,40 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   button: {
-    backgroundColor: '#007bff',
-    padding: 10,
-    borderRadius: 5,
+    backgroundColor: '#4CAF50',
+    padding: 15,
     marginVertical: 10,
+    borderRadius: 5,
+    alignItems: 'center',
   },
-  buttonText: { color: '#fff', textAlign: 'center' },
+  buttonText: { color: '#fff', fontSize: 16 },
   filePreview: {
-    marginVertical: 10,
+    borderWidth: 1,
     padding: 10,
-    backgroundColor: '#f1f1f1',
+    marginVertical: 10,
     borderRadius: 5,
   },
-  fileText: { color: '#333', fontSize: 14 },
+  fileText: { fontSize: 16 },
+  greenBorder: {
+    borderColor: 'green',
+    borderWidth: 3,
+  },
   uploadButton: {
     backgroundColor: '#4CAF50',
     padding: 15,
     borderRadius: 5,
-    marginTop: 20,
     alignItems: 'center',
   },
+  disabledButton: { backgroundColor: '#ddd' },
   uploadButtonText: { color: '#fff', fontSize: 16 },
-  disabledButton: {
-    backgroundColor: '#B0B0B0',
-  },
   resultContainer: {
     marginTop: 20,
+    backgroundColor: '#f4f4f4',
     padding: 10,
-    backgroundColor: '#e7f7e7',
     borderRadius: 5,
   },
-  resultTitle: { fontWeight: 'bold', fontSize: 16 },
-  resultText: { fontSize: 14, color: '#333' },
+  resultTitle: { fontWeight: 'bold', fontSize: 18 },
+  resultText: { fontSize: 16, color: '#333' },
 });
 
 export default PredictUploadScreen;

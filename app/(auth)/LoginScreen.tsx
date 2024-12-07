@@ -31,11 +31,13 @@ const LoginScreen: React.FC = () => {
 
   const navigation = useNavigation<NavigationProp>();
 
+  // Function to validate email format
   const validateEmail = (email: string) => {
     const emailPattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
     return emailPattern.test(email);
   };
 
+  // Login handler
   const handleLogin = async () => {
     if (!email || !password) {
       setError('Email and password are required');
@@ -54,7 +56,13 @@ const LoginScreen: React.FC = () => {
       const response = await apiClient.post('login/', { email, password });
 
       if (response.data?.access_token) {
+        // Store tokens securely in AsyncStorage
         await AsyncStorage.setItem('authToken', response.data.access_token);
+        // Store the refresh token if available
+        if (response.data.refresh_token) {
+          await AsyncStorage.setItem('refreshToken', response.data.refresh_token);
+        }
+        // Navigate to the home screen
         navigation.navigate('Tabs', { screen: 'Home' });
       } else {
         setError('Login failed. Please try again.');

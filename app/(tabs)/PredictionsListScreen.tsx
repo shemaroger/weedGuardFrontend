@@ -1,27 +1,49 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { NavigationProp } from '@react-navigation/native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  ActivityIndicator,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  RefreshControl,
+} from 'react-native';
 import apiClient from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Prediction {
-  id: number; // Or `string` based on your API
+  id: string;
   site_name: string;
-  timestamp: string;
+  location: string;
+  result: string;
+  created_at: string;
 }
 
-interface PredictionsListScreenProps {
-  navigation: NavigationProp<any>;
-}
-
-const PredictionsListScreen: React.FC<PredictionsListScreenProps> = ({ navigation }) => {
+const PredictionsListScreen: React.FC = () => {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
+  // Fetch predictions from the API
   const fetchPredictions = async () => {
+    setIsLoading(true);
     try {
-      const response = await apiClient.get<{ predictions: Prediction[] }>('predictions/');
-      setPredictions(response.data.predictions);
+      const token = await AsyncStorage.getItem('accessToken');
+      const response = await apiClient.get('/predict/', {
+        headers: { Authorization: token ? `Bearer ${token}` : '' },
+      });
+
+      if (response.status === 200) {
+        setPredictions(response.data);
+      } else {
+        Alert.alert('Error', 'Failed to fetch predictions');
+      }
     } catch (error) {
-      console.error('Failed to fetch predictions:', error);
+      console.error('Error fetching predictions:', error);
+      Alert.alert('Error', 'Unable to fetch predictions. Please try again later.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -29,31 +51,94 @@ const PredictionsListScreen: React.FC<PredictionsListScreenProps> = ({ navigatio
     fetchPredictions();
   }, []);
 
-  const navigateToDetails = (id: number) => {
-    navigation.navigate('PredictionDetails', { id });
+  // Handle pull-to-refresh
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchPredictions();
+    setRefreshing(false);
   };
 
-  const renderItem = ({ item }: { item: Prediction }) => (
-    <TouchableOpacity onPress={() => navigateToDetails(item.id)} style={styles.item}>
-      <Text style={styles.title}>{item.site_name}</Text>
-      <Text>{item.timestamp}</Text>
+  // Render each prediction item
+  const renderPredictionItem = ({ item }: { item: Prediction }) => (
+    <TouchableOpacity
+      style={styles.predictionCard}
+      onPress={() => {
+        Alert.alert(
+          'Prediction Details',
+          `Site Name: ${item.site_name}\nLocation: ${item.location}\nResult: ${item.result}\nDate: ${new Date(
+            item.created_at
+          ).toLocaleString()}`,
+          [{ text: 'Close' }]
+        );
+      }}
+    >
+      <Text style={styles.predictionSiteName}>{item.site_name}</Text>
+      <Text style={styles.predictionResult}>Result: {item.result}</Text>
+      <Text style={styles.predictionDate}>
+        Date: {new Date(item.created_at).toLocaleDateString()}
+      </Text>
     </TouchableOpacity>
   );
 
   return (
-    <FlatList
-      data={predictions}
-      renderItem={renderItem}
-      keyExtractor={(item) => item.id.toString()}
-      style={styles.container}
-    />
+    <View style={styles.container}>
+      {isLoading ? (
+        <ActivityIndicator size="large" color="#328A43FF" />
+      ) : (
+        <FlatList
+          data={predictions}
+          keyExtractor={(item) => item.id}
+          renderItem={renderPredictionItem}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+          ListEmptyComponent={
+            <Text style={styles.emptyListText}>No predictions available.</Text>
+          }
+        />
+      )}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 10 },
-  item: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#ddd' },
-  title: { fontWeight: 'bold', fontSize: 16 },
+  container: {
+    flex: 1,
+    backgroundColor: '#E8F5E9',
+    padding: 10,
+  },
+  predictionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 15,
+    marginVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  predictionSiteName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1B5E20',
+  },
+  predictionResult: {
+    fontSize: 16,
+    color: '#388E3C',
+    marginTop: 5,
+  },
+  predictionDate: {
+    fontSize: 14,
+    color: '#757575',
+    marginTop: 5,
+  },
+  emptyListText: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: '#9E9E9E',
+    marginTop: 20,
+  },
 });
 
 export default PredictionsListScreen;
