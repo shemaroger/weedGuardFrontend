@@ -8,7 +8,7 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor to add token
+
 apiClient.interceptors.request.use(
   async (config) => {
     const tokens = await getTokens();
