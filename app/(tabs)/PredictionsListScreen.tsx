@@ -17,7 +17,7 @@ interface Prediction {
   site_name: string;
   location: string;
   result: string;
-  created_at: string;
+  timestamp: string; // Changed 'created_at' to 'timestamp' based on the backend response
 }
 
 const PredictionsListScreen: React.FC = () => {
@@ -30,12 +30,17 @@ const PredictionsListScreen: React.FC = () => {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('accessToken');
-      const response = await apiClient.get('predict/', {
-        headers: { Authorization: token ? `Bearer ${token}` : '' },
+      if (!token) {
+        Alert.alert('Error', 'Authentication token not found. Please log in again.');
+        return;
+      }
+
+      const response = await apiClient.get('predictions/', {
+        headers: { Authorization: `Bearer ${token}` }, // Adjusted API path
       });
 
       if (response.status === 200) {
-        setPredictions(response.data);
+        setPredictions(response.data.predictions); // Assuming response contains predictions key
       } else {
         Alert.alert('Error', 'Failed to fetch predictions');
       }
@@ -66,8 +71,8 @@ const PredictionsListScreen: React.FC = () => {
         Alert.alert(
           'Prediction Details',
           `Site Name: ${item.site_name}\nLocation: ${item.location}\nResult: ${item.result}\nDate: ${new Date(
-            item.created_at
-          ).toLocaleString()}`,
+            item.timestamp
+          ).toLocaleString()}`, // Adjusted to use 'timestamp'
           [{ text: 'Close' }]
         );
       }}
@@ -75,7 +80,7 @@ const PredictionsListScreen: React.FC = () => {
       <Text style={styles.predictionSiteName}>{item.site_name}</Text>
       <Text style={styles.predictionResult}>Result: {item.result}</Text>
       <Text style={styles.predictionDate}>
-        Date: {new Date(item.created_at).toLocaleDateString()}
+        Date: {new Date(item.timestamp).toLocaleDateString()} {/* Adjusted to use 'timestamp' */}
       </Text>
     </TouchableOpacity>
   );
