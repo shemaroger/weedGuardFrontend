@@ -6,7 +6,6 @@ import { RootTabParamList } from '../types';
 import HomeScreen from './(tabs)/HomeScreen';
 import PredictionsListScreen from './(tabs)/PredictionsListScreen';
 import PredictUploadScreen from './(tabs)/PredictUploadScreen';
-import PredictionDetailsScreen from './(tabs)/PredictionDetailsScreen';
 import Header from './components/Header';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -60,11 +59,7 @@ const TabNavigator = () => (
       component={PredictUploadScreen}
       options={{ title: 'Upload Prediction' }}
     />
-    <Tab.Screen
-      name="PredictionDetails"
-      component={PredictionDetailsScreen}
-      options={{ title: 'Prediction Details' }}
-    />
+   
   </Tab.Navigator>
 );
 
