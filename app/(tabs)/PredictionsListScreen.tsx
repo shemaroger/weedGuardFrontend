@@ -52,13 +52,14 @@ const PredictionsListScreen: React.FC = () => {
     }
   };
 
+  // Wait for the token to be available before calling fetchPredictions
   useEffect(() => {
     if (token) {
-      fetchPredictions(); // If the token is available, fetch predictions
+      fetchPredictions();
     } else {
-      console.log('Token is not available, please log in again.');
+      console.log('Token is not available yet.');
     }
-  }, [token]); // Dependency on token to re-fetch when token is set
+  }, [token]); // Only call when token changes
 
   // Handle pull-to-refresh
   const handleRefresh = async () => {
