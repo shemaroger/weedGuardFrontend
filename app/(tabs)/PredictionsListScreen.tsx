@@ -1,3 +1,4 @@
+// PredictionsListScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -10,23 +11,22 @@ import {
   RefreshControl,
 } from 'react-native';
 import apiClient from '../services/api';
-import { useToken } from '../hooks/TokenStorageHook'; // Import the custom hook
+import { useToken } from '../hooks/TokenStorageHook';
 
 interface Prediction {
   id: string;
   site_name: string;
   location: string;
   result: string;
-  timestamp: string; // Changed 'created_at' to 'timestamp' based on the backend response
+  timestamp: string;
 }
 
 const PredictionsListScreen: React.FC = () => {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
-  const { token, storeToken } = useToken(); // Use the custom hook to get token
+  const { token, storeToken, isLoading: tokenLoading } = useToken();
 
-  // Fetch predictions from the API
   const fetchPredictions = async () => {
     if (!token) {
       Alert.alert('Error', 'Authentication token not found. Please log in again.');
@@ -52,16 +52,12 @@ const PredictionsListScreen: React.FC = () => {
     }
   };
 
-  // Wait for the token to be available before calling fetchPredictions
   useEffect(() => {
-    if (token) {
+    if (!tokenLoading && token) {
       fetchPredictions();
-    } else {
-      console.log('Token is not available yet.');
     }
-  }, [token]); // Only call when token changes
+  }, [token, tokenLoading]);
 
-  // Handle pull-to-refresh
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchPredictions();
@@ -88,6 +84,14 @@ const PredictionsListScreen: React.FC = () => {
       </Text>
     </TouchableOpacity>
   );
+
+  if (tokenLoading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#328A43FF" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
