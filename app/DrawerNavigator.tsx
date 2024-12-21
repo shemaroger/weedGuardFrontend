@@ -3,7 +3,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import TabNavigator from './TabNavigator';
 import RegisterScreen from './(auth)/RegisterScreen';
 import LoginScreen from './(auth)/LoginScreen';
-import PredictionsListScreen from './(tabs)/PredictionsListScreen';
+import AnalyticsDashboard from './(tabs)/AnalyticsDashboard';
 import Header from './components/Header';  // Adjust the path if necessary
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
@@ -80,14 +80,14 @@ const DrawerNavigator = () => (
       }}
     />
     <Drawer.Screen 
-      name="PredictionsListScreen"
+      name="AnalyticsDashboard"
       component={PredictionsListScreen}
       options={{
         title: 'WeedGuard',
         drawerIcon: ({ color, size }) => (
           <MaterialCommunityIcons name="chart-bar" color={color} size={size} />
         ),
-        header: () => <Header title="PredictionsListScreen" />,
+        header: () => <Header title="AnalyticsDashboard" />,
       }}
     />
   </Drawer.Navigator>
