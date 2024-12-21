@@ -30,8 +30,18 @@ const PredictionsListScreen: React.FC = () => {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('accessToken');
+      console.log('Token retrieved from AsyncStorage:', token); // Log the retrieved token
+
       if (!token) {
         Alert.alert('Error', 'Authentication token not found. Please log in again.');
+        console.log('No token found, please log in again.'); // Log when token is not found
+        return;
+      }
+
+      // Check if the token is valid (optional step)
+      if (token === '') {
+        Alert.alert('Error', 'Authentication token is empty. Please log in again.');
+        console.log('Token is empty, please log in again.'); // Log if token is empty
         return;
       }
 
@@ -39,10 +49,13 @@ const PredictionsListScreen: React.FC = () => {
         headers: { Authorization: `Bearer ${token}` }, // Adjusted API path
       });
 
+      console.log('API response:', response); // Log the response from the API
+
       if (response.status === 200) {
         setPredictions(response.data.predictions); // Assuming response contains predictions key
       } else {
         Alert.alert('Error', 'Failed to fetch predictions');
+        console.log('Failed to fetch predictions, status:', response.status); // Log failure status
       }
     } catch (error) {
       console.error('Error fetching predictions:', error);
