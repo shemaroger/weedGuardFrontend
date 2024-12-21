@@ -2,40 +2,40 @@
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const TOKEN_STORAGE_KEY = 'accessToken';
+
 export const useToken = () => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const getToken = async () => {
+    const initializeToken = async () => {
+      setIsLoading(true);
       try {
-        const storedToken = await AsyncStorage.getItem('accessToken');
-        if (isMounted) {
-          console.log('Token retrieved in useToken hook:', storedToken);
+        const storedToken = await AsyncStorage.getItem(TOKEN_STORAGE_KEY);
+        console.log('Initial token retrieval:', storedToken);
+        if (storedToken) {
           setToken(storedToken);
-          setIsLoading(false);
         }
       } catch (error) {
-        console.error('Error retrieving token:', error);
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        console.error('Error during token initialization:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    getToken();
-
-    return () => {
-      isMounted = false;
-    };
+    initializeToken();
   }, []);
 
   const storeToken = async (newToken: string) => {
     try {
-      await AsyncStorage.setItem('accessToken', newToken);
-      console.log('Token stored in AsyncStorage:', newToken);
+      if (!newToken) {
+        console.warn('Attempted to store null/empty token');
+        return false;
+      }
+      
+      await AsyncStorage.setItem(TOKEN_STORAGE_KEY, newToken);
+      console.log('Successfully stored new token:', newToken);
       setToken(newToken);
       return true;
     } catch (error) {
@@ -44,5 +44,21 @@ export const useToken = () => {
     }
   };
 
-  return { token, storeToken, isLoading };
+  const clearToken = async () => {
+    try {
+      await AsyncStorage.removeItem(TOKEN_STORAGE_KEY);
+      setToken(null);
+      return true;
+    } catch (error) {
+      console.error('Error clearing token:', error);
+      return false;
+    }
+  };
+
+  return { 
+    token, 
+    storeToken, 
+    clearToken,
+    isLoading 
+  };
 };

@@ -9,12 +9,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import apiClient from '../services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { deleteTokens } from '../services/TokenManager';
+import { useToken } from '../hooks/TokenStorageHook';
 
 type RootStackParamList = {
   Login: undefined;
@@ -29,18 +29,18 @@ const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  
   const navigation = useNavigation<NavigationProp>();
+  const { storeToken } = useToken();
 
-  // Function to validate email format
   const validateEmail = (email: string) => {
     const emailPattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
     return emailPattern.test(email);
   };
 
-  // Login handler
   const handleLogin = async () => {
-    if (!email || !password) {
+    // Input validation
+    if (!email.trim() || !password.trim()) {
       setError('Email and password are required');
       return;
     }
@@ -54,57 +54,75 @@ const LoginScreen: React.FC = () => {
     setError(null);
 
     try {
-      const response = await apiClient.post('login/', { email, password });
+      const response = await apiClient.post('login/', {
+        email: email.trim(),
+        password: password.trim(),
+      });
 
       if (response.data?.access_token) {
         const token = response.data.access_token;
-        console.log('Access Token:', token); // Log the token here
+        console.log('Access Token received:', token);
 
-        // Store tokens securely in AsyncStorage
-        await AsyncStorage.setItem('authToken', token);
-
-        // Log the token stored in AsyncStorage
-        const storedToken = await AsyncStorage.getItem('authToken');
-        console.log('Stored Token in AsyncStorage:', storedToken); // Log the stored token
-
-        // Store the refresh token if available
-        if (response.data.refresh_token) {
-          await AsyncStorage.setItem('refreshToken', response.data.refresh_token);
+        // Store token using the hook
+        const storeSuccess = await storeToken(token);
+        
+        if (storeSuccess) {
+          // Clear sensitive data
+          setEmail('');
+          setPassword('');
+          
+          // Navigate to home screen
+          navigation.navigate('Tabs', { screen: 'Home' });
+        } else {
+          throw new Error('Failed to store authentication token');
         }
-
-        // Navigate to the home screen
-        navigation.navigate('Tabs', { screen: 'Home' });
       } else {
-        setError('Login failed. Please try again.');
+        throw new Error('No access token received from server');
       }
     } catch (error: any) {
-      if (error.response?.data?.detail) {
-        setError(error.response.data.detail); // Show specific error from the backend
+      console.error('Login error:', error);
+      
+      // Handle different types of errors
+      if (error.response?.status === 401) {
+        setError('Invalid email or password');
+      } else if (error.response?.data?.detail) {
+        setError(error.response.data.detail);
+      } else if (error.message) {
+        setError(error.message);
       } else {
         setError('An unexpected error occurred. Please try again later.');
       }
+      
+      // Show error in alert for visibility
+      Alert.alert('Login Failed', error.response?.data?.detail || 'Failed to login. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Clear error message when user starts typing
   const handleChangeEmail = (text: string) => {
     setEmail(text);
-    setError(null); // Clear error on input change
+    setError(null);
   };
 
   const handleChangePassword = (text: string) => {
     setPassword(text);
-    setError(null); // Clear error on input change
+    setError(null);
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+      style={styles.container}
+    >
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.innerContainer}>
           <Text style={styles.title}>Welcome Back</Text>
           <Text style={styles.subtitle}>Log in to your account</Text>
+          
           <View style={styles.formContainer}>
             <TextInput
               style={[styles.input, error ? styles.inputError : null]}
@@ -113,26 +131,47 @@ const LoginScreen: React.FC = () => {
               onChangeText={handleChangeEmail}
               autoCapitalize="none"
               keyboardType="email-address"
+              editable={!loading}
+              autoCorrect={false}
+              testID="email-input"
             />
+            
             <TextInput
               style={[styles.input, error ? styles.inputError : null]}
               placeholder="Password"
               value={password}
               onChangeText={handleChangePassword}
               secureTextEntry
+              editable={!loading}
+              testID="password-input"
             />
-            {error && <Text style={styles.errorText}>{error}</Text>}
+            
+            {error && (
+              <Text style={styles.errorText} testID="error-message">
+                {error}
+              </Text>
+            )}
+            
             <TouchableOpacity
               style={[styles.loginButton, loading && styles.loginButtonDisabled]}
               onPress={handleLogin}
               disabled={loading}
+              testID="login-button"
             >
-              {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.loginButtonText}>Log In</Text>}
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.loginButtonText}>Log In</Text>
+              )}
             </TouchableOpacity>
           </View>
+          
           <View style={styles.signupContainer}>
-            <Text style={styles.signupText}>Don’t have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+            <Text style={styles.signupText}>Don't have an account? </Text>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('Register')}
+              testID="signup-link"
+            >
               <Text style={styles.signupLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>
@@ -167,7 +206,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#FFFFFFFF',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   subtitle: {
@@ -189,7 +228,7 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   inputError: {
-    borderColor: 'red',
+    borderColor: '#FF3B30',
     borderWidth: 1,
   },
   loginButton: {
@@ -205,14 +244,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#B8B8B8',
   },
   loginButtonText: {
-    color: '#1E1E2F',
+    color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 16,
   },
   errorText: {
     marginTop: 8,
-    color: 'red',
+    color: '#FF3B30',
     fontSize: 14,
+    textAlign: 'center',
   },
   signupContainer: {
     flexDirection: 'row',
@@ -224,7 +264,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   signupLink: {
-    color: '#FFFFFFFF',
+    color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 16,
     textDecorationLine: 'underline',
