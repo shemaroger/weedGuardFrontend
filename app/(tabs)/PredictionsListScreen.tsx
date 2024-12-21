@@ -38,13 +38,14 @@ const PredictionsListScreen: React.FC = () => {
         return;
       }
 
-      // Check if the token is valid (optional step)
-      if (token === '') {
+      // Check if the token is empty (though technically AsyncStorage.getItem returns null if not found)
+      if (token.trim() === '') {
         Alert.alert('Error', 'Authentication token is empty. Please log in again.');
         console.log('Token is empty, please log in again.'); // Log if token is empty
         return;
       }
 
+      // Send API request with the token
       const response = await apiClient.get('predictions/', {
         headers: { Authorization: `Bearer ${token}` }, // Adjusted API path
       });
@@ -66,8 +67,19 @@ const PredictionsListScreen: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchPredictions();
-  }, []);
+    // Ensure we fetch the predictions only when the token is available
+    const checkTokenAndFetch = async () => {
+      const token = await AsyncStorage.getItem('accessToken');
+      console.log('Checking token in useEffect:', token);
+      if (token) {
+        fetchPredictions();
+      } else {
+        console.log('Token not found in useEffect');
+      }
+    };
+    
+    checkTokenAndFetch();
+  }, []); // Empty dependency array ensures this runs only once on component mount
 
   // Handle pull-to-refresh
   const handleRefresh = async () => {
