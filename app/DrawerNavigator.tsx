@@ -81,7 +81,7 @@ const DrawerNavigator = () => (
     />
     <Drawer.Screen 
       name="AnalyticsDashboard"
-      component={PredictionsListScreen}
+      component={AnalyticsDashboard}
       options={{
         title: 'WeedGuard',
         drawerIcon: ({ color, size }) => (
