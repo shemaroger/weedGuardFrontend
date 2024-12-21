@@ -57,12 +57,21 @@ const LoginScreen: React.FC = () => {
       const response = await apiClient.post('login/', { email, password });
 
       if (response.data?.access_token) {
+        const token = response.data.access_token;
+        console.log('Access Token:', token); // Log the token here
+
         // Store tokens securely in AsyncStorage
-        await AsyncStorage.setItem('authToken', response.data.access_token);
+        await AsyncStorage.setItem('authToken', token);
+
+        // Log the token stored in AsyncStorage
+        const storedToken = await AsyncStorage.getItem('authToken');
+        console.log('Stored Token in AsyncStorage:', storedToken); // Log the stored token
+
         // Store the refresh token if available
         if (response.data.refresh_token) {
           await AsyncStorage.setItem('refreshToken', response.data.refresh_token);
         }
+
         // Navigate to the home screen
         navigation.navigate('Tabs', { screen: 'Home' });
       } else {
@@ -223,4 +232,3 @@ const styles = StyleSheet.create({
 });
 
 export default LoginScreen;
-
