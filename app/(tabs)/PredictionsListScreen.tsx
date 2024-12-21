@@ -35,7 +35,7 @@ const PredictionsListScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const response = await apiClient.get('predictions/', {
+      const response = await apiClient.get('predictions-list/', {
         headers: { Authorization: `Bearer ${token}` },
       });
 
