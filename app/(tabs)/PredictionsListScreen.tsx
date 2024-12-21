@@ -30,7 +30,7 @@ const PredictionsListScreen: React.FC = () => {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('accessToken');
-      const response = await apiClient.get('/predict/', {
+      const response = await apiClient.get('predict/', {
         headers: { Authorization: token ? `Bearer ${token}` : '' },
       });
 
