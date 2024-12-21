@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import apiClient from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { deleteTokens } from '../services/TokenManager';
 
 type RootStackParamList = {
   Login: undefined;
@@ -222,3 +223,4 @@ const styles = StyleSheet.create({
 });
 
 export default LoginScreen;
+
