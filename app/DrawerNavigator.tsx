@@ -83,7 +83,7 @@ const DrawerNavigator = () => (
       name="AnalyticsDashboard"
       component={AnalyticsDashboard}
       options={{
-        title: 'WeedGuard',
+        title: 'Analytical',
         drawerIcon: ({ color, size }) => (
           <MaterialCommunityIcons name="chart-bar" color={color} size={size} />
         ),

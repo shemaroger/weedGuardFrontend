@@ -6,10 +6,18 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
-import { LineChart, PieChart } from 'recharts';
-import apiClient from '../services/api';
 import { useToken } from '../hooks/TokenStorageHook';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from 'recharts';
 
 interface AnalyticsData {
   overview: {
@@ -22,20 +30,8 @@ interface AnalyticsData {
     result: string;
     count: number;
   }>;
-  location_statistics: Array<{
-    location: string;
-    count: number;
-  }>;
   monthly_trends: Array<{
     month: string;
-    count: number;
-  }>;
-  weekly_trends: Array<{
-    week: string;
-    count: number;
-  }>;
-  site_statistics: Array<{
-    site_name: string;
     count: number;
   }>;
   recent_activity: Array<{
@@ -54,13 +50,30 @@ const AnalyticsDashboard: React.FC = () => {
   const { token } = useToken();
 
   const fetchAnalytics = async () => {
+    if (!token) {
+      Alert.alert('Error', 'Please log in again');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await apiClient.get('analytics/', {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await fetch('http://your-api-url/api/analytics/', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
-      setAnalytics(response.data);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setAnalytics(data);
     } catch (error) {
       console.error('Error fetching analytics:', error);
+      Alert.alert('Error', 'Failed to load analytics data');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -69,7 +82,7 @@ const AnalyticsDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchAnalytics();
-  }, []);
+  }, [token]);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -84,6 +97,36 @@ const AnalyticsDashboard: React.FC = () => {
     );
   }
 
+  const MonthlyTrendsChart = () => {
+    if (!analytics?.monthly_trends || analytics.monthly_trends.length === 0) {
+      return (
+        <View style={styles.noDataContainer}>
+          <Text style={styles.noDataText}>No monthly data available</Text>
+        </View>
+      );
+    }
+
+    const data = analytics.monthly_trends.map(item => ({
+      name: new Date(item.month).toLocaleDateString('en-US', { month: 'short' }),
+      predictions: item.count
+    }));
+
+    return (
+      <View style={styles.chartContainer}>
+        <Text style={styles.sectionTitle}>Monthly Predictions</Text>
+        <View style={styles.chartWrapper}>
+          <LineChart width={300} height={200} data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Line type="monotone" dataKey="predictions" stroke="#328A43" />
+          </LineChart>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <ScrollView 
       style={styles.container}
@@ -95,47 +138,39 @@ const AnalyticsDashboard: React.FC = () => {
       <View style={styles.overviewContainer}>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Total Predictions</Text>
-          <Text style={styles.cardValue}>{analytics?.overview.total_predictions}</Text>
+          <Text style={styles.cardValue}>
+            {analytics?.overview.total_predictions || 0}
+          </Text>
         </View>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Recent (30 days)</Text>
-          <Text style={styles.cardValue}>{analytics?.overview.recent_predictions}</Text>
+          <Text style={styles.cardValue}>
+            {analytics?.overview.recent_predictions || 0}
+          </Text>
         </View>
       </View>
 
       {/* Monthly Trends Chart */}
-      <View style={styles.chartContainer}>
-        <Text style={styles.sectionTitle}>Monthly Activity</Text>
-        <LineChart
-          width={350}
-          height={200}
-          data={analytics?.monthly_trends}
-          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-        >
-          {/* Chart configuration */}
-        </LineChart>
-      </View>
-
-      {/* Weed Statistics */}
-      <View style={styles.chartContainer}>
-        <Text style={styles.sectionTitle}>Weed Detection Results</Text>
-        <PieChart width={350} height={200}>
-          {/* Pie chart configuration */}
-        </PieChart>
-      </View>
+      <MonthlyTrendsChart />
 
       {/* Recent Activity */}
       <View style={styles.recentActivityContainer}>
         <Text style={styles.sectionTitle}>Recent Activity</Text>
-        {analytics?.recent_activity.map((activity) => (
-          <View key={activity.id} style={styles.activityCard}>
-            <Text style={styles.activityResult}>{activity.result}</Text>
-            <Text style={styles.activityLocation}>{activity.location}</Text>
-            <Text style={styles.activityDate}>
-              {new Date(activity.timestamp).toLocaleDateString()}
-            </Text>
-          </View>
-        ))}
+        {analytics?.recent_activity && analytics.recent_activity.length > 0 ? (
+          analytics.recent_activity.map((activity) => (
+            <View key={activity.id} style={styles.activityCard}>
+              <Text style={styles.activityResult}>{activity.result}</Text>
+              <Text style={styles.activityLocation}>
+                {activity.location || 'No location'}
+              </Text>
+              <Text style={styles.activityDate}>
+                {new Date(activity.timestamp).toLocaleDateString()}
+              </Text>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.noDataText}>No recent activity</Text>
+        )}
       </View>
     </ScrollView>
   );
@@ -188,6 +223,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  chartWrapper: {
+    alignItems: 'center',
+    marginVertical: 8,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -222,6 +261,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999999',
     marginTop: 4,
+  },
+  noDataContainer: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  noDataText: {
+    color: '#666666',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });
 
