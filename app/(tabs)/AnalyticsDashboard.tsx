@@ -9,15 +9,6 @@ import {
   Alert,
 } from 'react-native';
 import { useToken } from '../hooks/TokenStorageHook';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer
-} from 'recharts';
 
 interface AnalyticsData {
   overview: {
@@ -57,7 +48,7 @@ const AnalyticsDashboard: React.FC = () => {
     }
 
     try {
-      const response = await fetch('http://your-api-url/api/analytics/', {
+      const response = await fetch('http://192.168.8.107:8000/api/analytics/', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -97,82 +88,52 @@ const AnalyticsDashboard: React.FC = () => {
     );
   }
 
-  const MonthlyTrendsChart = () => {
-    if (!analytics?.monthly_trends || analytics.monthly_trends.length === 0) {
-      return (
-        <View style={styles.noDataContainer}>
-          <Text style={styles.noDataText}>No monthly data available</Text>
-        </View>
-      );
-    }
-
-    const data = analytics.monthly_trends.map(item => ({
-      name: new Date(item.month).toLocaleDateString('en-US', { month: 'short' }),
-      predictions: item.count
-    }));
-
-    return (
-      <View style={styles.chartContainer}>
-        <Text style={styles.sectionTitle}>Monthly Predictions</Text>
-        <View style={styles.chartWrapper}>
-          <LineChart width={300} height={200} data={data}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <Line type="monotone" dataKey="predictions" stroke="#328A43" />
-          </LineChart>
-        </View>
-      </View>
-    );
-  };
-
   return (
-    <ScrollView 
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      {/* Overview Cards */}
-      <View style={styles.overviewContainer}>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Total Predictions</Text>
-          <Text style={styles.cardValue}>
-            {analytics?.overview.total_predictions || 0}
-          </Text>
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Overview Cards */}
+        <View style={styles.overviewContainer}>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Total Predictions</Text>
+            <Text style={styles.cardValue}>
+              {analytics?.overview.total_predictions || 0}
+            </Text>
+          </View>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Recent (30 days)</Text>
+            <Text style={styles.cardValue}>
+              {analytics?.overview.recent_predictions || 0}
+            </Text>
+          </View>
         </View>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Recent (30 days)</Text>
-          <Text style={styles.cardValue}>
-            {analytics?.overview.recent_predictions || 0}
-          </Text>
+
+        {/* Recent Activity */}
+        <View style={styles.recentActivityContainer}>
+          <Text style={styles.sectionTitle}>Recent Activity</Text>
+          {analytics?.recent_activity && analytics.recent_activity.length > 0 ? (
+            analytics.recent_activity.map((activity) => (
+              <View key={activity.id} style={styles.activityCard}>
+                <Text style={styles.activityResult}>{activity.result}</Text>
+                <Text style={styles.activityLocation}>
+                  {activity.location || 'No location'}
+                </Text>
+                <Text style={styles.activityDate}>
+                  {new Date(activity.timestamp).toLocaleDateString()}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noDataText}>No recent activity</Text>
+          )}
         </View>
-      </View>
-
-      {/* Monthly Trends Chart */}
-      <MonthlyTrendsChart />
-
-      {/* Recent Activity */}
-      <View style={styles.recentActivityContainer}>
-        <Text style={styles.sectionTitle}>Recent Activity</Text>
-        {analytics?.recent_activity && analytics.recent_activity.length > 0 ? (
-          analytics.recent_activity.map((activity) => (
-            <View key={activity.id} style={styles.activityCard}>
-              <Text style={styles.activityResult}>{activity.result}</Text>
-              <Text style={styles.activityLocation}>
-                {activity.location || 'No location'}
-              </Text>
-              <Text style={styles.activityDate}>
-                {new Date(activity.timestamp).toLocaleDateString()}
-              </Text>
-            </View>
-          ))
-        ) : (
-          <Text style={styles.noDataText}>No recent activity</Text>
-        )}
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
@@ -186,16 +147,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    padding: 16,
+  },
   overviewContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 16,
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 8,
     padding: 16,
-    width: '45%',
+    width: '48%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -212,29 +180,14 @@ const styles = StyleSheet.create({
     color: '#328A43',
     marginTop: 8,
   },
-  chartContainer: {
-    backgroundColor: '#FFFFFF',
-    margin: 16,
-    padding: 16,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  chartWrapper: {
-    alignItems: 'center',
-    marginVertical: 8,
+  recentActivityContainer: {
+    marginTop: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
     color: '#333333',
-  },
-  recentActivityContainer: {
-    padding: 16,
   },
   activityCard: {
     backgroundColor: '#FFFFFF',
@@ -261,10 +214,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999999',
     marginTop: 4,
-  },
-  noDataContainer: {
-    padding: 16,
-    alignItems: 'center',
   },
   noDataText: {
     color: '#666666',
