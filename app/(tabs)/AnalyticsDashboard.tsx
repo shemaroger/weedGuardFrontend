@@ -9,6 +9,10 @@ import {
   Alert,
 } from 'react-native';
 import { useToken } from '../hooks/TokenStorageHook';
+import { BarChart, LineChart } from 'react-native-chart-kit';
+import { Dimensions } from 'react-native';
+
+const screenWidth = Dimensions.get('window').width;
 
 interface AnalyticsData {
   overview: {
@@ -88,6 +92,24 @@ const AnalyticsDashboard: React.FC = () => {
     );
   }
 
+  const monthlyTrendData = {
+    labels: analytics?.monthly_trends.map((item) => item.month) || [],
+    datasets: [
+      {
+        data: analytics?.monthly_trends.map((item) => item.count) || [],
+      },
+    ],
+  };
+
+  const weedStatsData = {
+    labels: analytics?.weed_statistics.map((item) => item.result) || [],
+    datasets: [
+      {
+        data: analytics?.weed_statistics.map((item) => item.count) || [],
+      },
+    ],
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -113,24 +135,50 @@ const AnalyticsDashboard: React.FC = () => {
           </View>
         </View>
 
-        {/* Recent Activity */}
-        <View style={styles.recentActivityContainer}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          {analytics?.recent_activity && analytics.recent_activity.length > 0 ? (
-            analytics.recent_activity.map((activity) => (
-              <View key={activity.id} style={styles.activityCard}>
-                <Text style={styles.activityResult}>{activity.result}</Text>
-                <Text style={styles.activityLocation}>
-                  {activity.location || 'No location'}
-                </Text>
-                <Text style={styles.activityDate}>
-                  {new Date(activity.timestamp).toLocaleDateString()}
-                </Text>
-              </View>
-            ))
-          ) : (
-            <Text style={styles.noDataText}>No recent activity</Text>
-          )}
+        {/* Monthly Trends Graph */}
+        <View style={styles.graphContainer}>
+          <Text style={styles.sectionTitle}>Monthly Trends</Text>
+          <LineChart
+            data={monthlyTrendData}
+            width={screenWidth - 32}
+            height={220}
+            chartConfig={{
+              backgroundColor: '#ffffff',
+              backgroundGradientFrom: '#ffffff',
+              backgroundGradientTo: '#ffffff',
+              decimalPlaces: 0,
+              color: (opacity = 1) => `rgba(50, 138, 67, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(102, 102, 102, ${opacity})`,
+              style: {
+                borderRadius: 8,
+              },
+              propsForDots: {
+                r: '6',
+                strokeWidth: '2',
+                stroke: '#328A43',
+              },
+            }}
+            style={styles.chart}
+          />
+        </View>
+
+        {/* Weed Statistics Bar Chart */}
+        <View style={styles.graphContainer}>
+          <Text style={styles.sectionTitle}>Weed Statistics</Text>
+          <BarChart
+            data={weedStatsData}
+            width={screenWidth - 32}
+            height={220}
+            chartConfig={{
+              backgroundColor: '#ffffff',
+              backgroundGradientFrom: '#ffffff',
+              backgroundGradientTo: '#ffffff',
+              decimalPlaces: 0,
+              color: (opacity = 1) => `rgba(50, 138, 67, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(102, 102, 102, ${opacity})`,
+            }}
+            style={styles.chart}
+          />
         </View>
       </ScrollView>
     </View>
@@ -180,8 +228,8 @@ const styles = StyleSheet.create({
     color: '#328A43',
     marginTop: 8,
   },
-  recentActivityContainer: {
-    marginTop: 16,
+  graphContainer: {
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
@@ -189,36 +237,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: '#333333',
   },
-  activityCard: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
+  chart: {
     borderRadius: 8,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  activityResult: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#328A43',
-  },
-  activityLocation: {
-    fontSize: 14,
-    color: '#666666',
-    marginTop: 4,
-  },
-  activityDate: {
-    fontSize: 12,
-    color: '#999999',
-    marginTop: 4,
-  },
-  noDataText: {
-    color: '#666666',
-    fontSize: 14,
-    textAlign: 'center',
   },
 });
 
