@@ -9,9 +9,11 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import apiClient from '../services/api';
+import { saveTokens } from '../services/TokenManager'; // Import token storage utility
 
 const RegisterScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -19,6 +21,7 @@ const RegisterScreen: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const validateEmail = (email: string) => {
     const emailPattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
@@ -36,21 +39,38 @@ const RegisterScreen: React.FC = () => {
       return;
     }
 
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
     const data = { fullname: name, email, password, role: 'farmer' };
 
     try {
+      setIsLoading(true);
       setError(null);
+
       const response = await apiClient.post('user/', data);
+
+      // If registration is successful, save tokens (if returned by the API)
+      if (response.data?.access_token) {
+        await saveTokens(response.data.access_token, response.data.refresh_token);
+      }
+
       Alert.alert('Success', 'User registered successfully!');
       console.log('Response:', response.data);
       navigation.navigate('Login');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
-      if (error.response && error.response.data) {
-        setError(error.response.data.message || 'Registration failed');
+      if (error.response?.data?.detail) {
+        setError(error.response.data.detail);
+      } else if (error.response?.data?.message) {
+        setError(error.response.data.message);
       } else {
-        setError('Something went wrong');
+        setError('Something went wrong. Please try again.');
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -87,10 +107,18 @@ const RegisterScreen: React.FC = () => {
           />
           {error && <Text style={styles.errorText}>{error}</Text>}
 
-          <TouchableOpacity style={styles.button} onPress={handleRegister}>
-            <Text style={styles.buttonText}>Register</Text>
+          <TouchableOpacity
+            style={[styles.button, isLoading && styles.disabledButton]}
+            onPress={handleRegister}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Register</Text>
+            )}
           </TouchableOpacity>
-          
+
           <View style={styles.signupContainer}>
             <Text style={styles.signupText}>Already have an account? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
@@ -159,6 +187,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 16,
+  },
+  disabledButton: {
+    backgroundColor: '#B8B8B8',
   },
   buttonText: {
     color: '#000',

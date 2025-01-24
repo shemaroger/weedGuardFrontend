@@ -7,10 +7,10 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { useToken } from '../hooks/TokenStorageHook';
 import { BarChart, LineChart } from 'react-native-chart-kit';
-import { Dimensions } from 'react-native';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -55,7 +55,7 @@ const AnalyticsDashboard: React.FC = () => {
       const response = await fetch('http://192.168.8.107:8000/api/analytics/', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -68,7 +68,7 @@ const AnalyticsDashboard: React.FC = () => {
       setAnalytics(data);
     } catch (error) {
       console.error('Error fetching analytics:', error);
-      Alert.alert('Error', 'Failed to load analytics data');
+      Alert.alert('Error', 'Failed to load analytics data. Please try again later.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -97,6 +97,8 @@ const AnalyticsDashboard: React.FC = () => {
     datasets: [
       {
         data: analytics?.monthly_trends.map((item) => item.count) || [],
+        color: (opacity = 1) => `rgba(50, 138, 67, ${opacity})`, // Custom color for the line
+        strokeWidth: 2, // Line thickness
       },
     ],
   };
@@ -106,6 +108,11 @@ const AnalyticsDashboard: React.FC = () => {
     datasets: [
       {
         data: analytics?.weed_statistics.map((item) => item.count) || [],
+        colors: [
+          (opacity = 1) => `rgba(50, 138, 67, ${opacity})`, // Custom colors for bars
+          (opacity = 1) => `rgba(255, 99, 132, ${opacity})`,
+          (opacity = 1) => `rgba(54, 162, 235, ${opacity})`,
+        ],
       },
     ],
   };
@@ -133,6 +140,18 @@ const AnalyticsDashboard: React.FC = () => {
               {analytics?.overview.recent_predictions || 0}
             </Text>
           </View>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Unique Locations</Text>
+            <Text style={styles.cardValue}>
+              {analytics?.overview.unique_locations || 0}
+            </Text>
+          </View>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Unique Sites</Text>
+            <Text style={styles.cardValue}>
+              {analytics?.overview.unique_sites || 0}
+            </Text>
+          </View>
         </View>
 
         {/* Monthly Trends Graph */}
@@ -158,6 +177,7 @@ const AnalyticsDashboard: React.FC = () => {
                 stroke: '#328A43',
               },
             }}
+            bezier // Smooth line curve
             style={styles.chart}
           />
         </View>
@@ -178,6 +198,8 @@ const AnalyticsDashboard: React.FC = () => {
               labelColor: (opacity = 1) => `rgba(102, 102, 102, ${opacity})`,
             }}
             style={styles.chart}
+            fromZero // Start Y-axis from zero
+            showBarTops // Show tops of bars
           />
         </View>
       </ScrollView>
@@ -204,6 +226,7 @@ const styles = StyleSheet.create({
   },
   overviewContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: 16,
   },
@@ -212,6 +235,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
     width: '48%',
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -229,7 +253,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   graphContainer: {
-    marginBottom: 16,
+    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 18,

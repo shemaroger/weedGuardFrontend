@@ -14,7 +14,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import apiClient from '../services/api';
-import { useToken } from '../hooks/TokenStorageHook';
+import { saveTokens } from '../services/TokenManager';
 
 type RootStackParamList = {
   Login: undefined;
@@ -29,9 +29,8 @@ const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const navigation = useNavigation<NavigationProp>();
-  const { storeToken } = useToken();
 
   const validateEmail = (email: string) => {
     const emailPattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
@@ -39,7 +38,6 @@ const LoginScreen: React.FC = () => {
   };
 
   const handleLogin = async () => {
-    // Input validation
     if (!email.trim() || !password.trim()) {
       setError('Email and password are required');
       return;
@@ -61,118 +59,57 @@ const LoginScreen: React.FC = () => {
 
       if (response.data?.access_token) {
         const token = response.data.access_token;
-        console.log('Access Token received:', token);
+        const refreshToken = response.data.refresh_token;
 
-        // Store token using the hook
-        const storeSuccess = await storeToken(token);
-        
-        if (storeSuccess) {
-          // Clear sensitive data
-          setEmail('');
-          setPassword('');
-          
-          // Navigate to home screen
-          navigation.navigate('Tabs', { screen: 'Home' });
-        } else {
-          throw new Error('Failed to store authentication token');
-        }
+        // Store tokens
+        await saveTokens(token, refreshToken);
+
+        // Clear sensitive data
+        setEmail('');
+        setPassword('');
+
+        // Navigate to home screen
+        navigation.navigate('Tabs', { screen: 'Home' });
       } else {
         throw new Error('No access token received from server');
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      
-      // Handle different types of errors
-      if (error.response?.status === 401) {
-        setError('Invalid email or password');
-      } else if (error.response?.data?.detail) {
-        setError(error.response.data.detail);
-      } else if (error.message) {
-        setError(error.message);
-      } else {
-        setError('An unexpected error occurred. Please try again later.');
-      }
-      
-      // Show error in alert for visibility
+      setError(error.response?.data?.detail || 'Failed to login. Please try again.');
       Alert.alert('Login Failed', error.response?.data?.detail || 'Failed to login. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChangeEmail = (text: string) => {
-    setEmail(text);
-    setError(null);
-  };
-
-  const handleChangePassword = (text: string) => {
-    setPassword(text);
-    setError(null);
-  };
-
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-      style={styles.container}
-    >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
-      >
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         <View style={styles.innerContainer}>
           <Text style={styles.title}>Welcome Back</Text>
           <Text style={styles.subtitle}>Log in to your account</Text>
-          
+
           <View style={styles.formContainer}>
             <TextInput
               style={[styles.input, error ? styles.inputError : null]}
               placeholder="Email"
               value={email}
-              onChangeText={handleChangeEmail}
+              onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
               editable={!loading}
-              autoCorrect={false}
-              testID="email-input"
             />
-            
             <TextInput
               style={[styles.input, error ? styles.inputError : null]}
               placeholder="Password"
               value={password}
-              onChangeText={handleChangePassword}
+              onChangeText={setPassword}
               secureTextEntry
               editable={!loading}
-              testID="password-input"
             />
-            
-            {error && (
-              <Text style={styles.errorText} testID="error-message">
-                {error}
-              </Text>
-            )}
-            
-            <TouchableOpacity
-              style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-              testID="login-button"
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.loginButtonText}>Log In</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.signupContainer}>
-            <Text style={styles.signupText}>Don't have an account? </Text>
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('Register')}
-              testID="signup-link"
-            >
-              <Text style={styles.signupLink}>Sign Up</Text>
+            {error && <Text style={styles.errorText}>{error}</Text>}
+            <TouchableOpacity style={[styles.loginButton, loading && styles.loginButtonDisabled]} onPress={handleLogin} disabled={loading}>
+              {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.loginButtonText}>Log In</Text>}
             </TouchableOpacity>
           </View>
         </View>
@@ -253,21 +190,6 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     fontSize: 14,
     textAlign: 'center',
-  },
-  signupContainer: {
-    flexDirection: 'row',
-    marginTop: 20,
-    justifyContent: 'center',
-  },
-  signupText: {
-    color: '#D1D1E9',
-    fontSize: 16,
-  },
-  signupLink: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 16,
-    textDecorationLine: 'underline',
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,221 +7,290 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  ScrollView,
+  Platform,
 } from 'react-native';
-import MapView, { Marker, MapPressEvent } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator'; // Import image manipulator
+import * as ImageManipulator from 'expo-image-manipulator';
+import { Image } from 'react-native';
 import apiClient from '../services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
+interface PredictUploadScreenProps {
+  farmerId: string;
+  onPredictionComplete?: (result: string) => void;
+  onAuthError?: () => void;
+}
+
+const PredictUploadScreen: React.FC<PredictUploadScreenProps> = ({
+  farmerId,
+  onPredictionComplete,
+  onAuthError,
+}) => {
   const [siteName, setSiteName] = useState<string>('');
-  const [location, setLocation] = useState<string>('Fetching location...');
+  const [location, setLocation] = useState<{
+    latitude: number | null;
+    longitude: number | null;
+    description: string;
+  }>({
+    latitude: null,
+    longitude: null,
+    description: 'Fetching location...',
+  });
   const [image, setImage] = useState<string | null>(null);
-  const [imageSource, setImageSource] = useState<'camera' | 'gallery' | null>(null); // New state for image source
-  const [latitude, setLatitude] = useState<number | null>(null);
-  const [longitude, setLongitude] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [predictionResult, setPredictionResult] = useState<string | null>(null);
 
-  // Fetch location on initial load
-  useEffect(() => {
-    const fetchLocation = async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert(
-            'Permission Denied',
-            'Location permission is required to set your current location.'
-          );
-          setLocation('Permission denied');
-          return;
-        }
-
-        const { coords } = await Location.getCurrentPositionAsync({});
-        setLatitude(coords.latitude);
-        setLongitude(coords.longitude);
-        setLocation(`Lat: ${coords.latitude}, Lon: ${coords.longitude}`);
-      } catch (error) {
-        console.error('Error fetching location:', error);
-        setLocation('Unable to fetch location');
+  // Fetch current location
+  const fetchCurrentLocation = useCallback(async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setLocation((prev) => ({
+          ...prev,
+          description: 'Location permission denied',
+        }));
+        return;
       }
-    };
 
-    fetchLocation();
+      const { coords } = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      const reverseGeocode = await Location.reverseGeocodeAsync({
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      });
+
+      const locationDescription =
+        reverseGeocode.length > 0
+          ? `${reverseGeocode[0].city}, ${reverseGeocode[0].region}`
+          : `Lat: ${coords.latitude.toFixed(4)}, Lon: ${coords.longitude.toFixed(4)}`;
+
+      setLocation({
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        description: locationDescription,
+      });
+    } catch (error) {
+      console.error('Location fetch error:', error);
+      setLocation((prev) => ({
+        ...prev,
+        description: 'Unable to fetch location',
+      }));
+    }
   }, []);
 
-  // Handle image picker (gallery)
-  const pickImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permissionResult.granted) {
-      Alert.alert(
-        'Permission Denied',
-        'You need to enable permissions to select an image.'
-      );
-      return;
+  useEffect(() => {
+    fetchCurrentLocation();
+  }, [fetchCurrentLocation]);
+
+  // Request media library permission
+  const requestMediaPermission = useCallback(async () => {
+    if (Platform.OS !== 'web') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      return status === 'granted';
     }
+    return true;
+  }, []);
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 1,
-    });
-
-    if (!result.canceled && result.assets?.length > 0) {
-      const resizedImage = await resizeImage(result.assets[0].uri);
-      setImage(resizedImage);
-      setImageSource('gallery'); // Set the image source to gallery
+  // Request camera permission
+  const requestCameraPermission = useCallback(async () => {
+    if (Platform.OS !== 'web') {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      return status === 'granted';
     }
-  };
+    return true;
+  }, []);
 
-  // Handle camera input
-  const takePicture = async () => {
-    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permissionResult.granted) {
-      Alert.alert('Permission Denied', 'You need to enable permissions to use the camera.');
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      quality: 1,
-    });
-
-    if (!result.canceled && result.assets?.length > 0) {
-      const resizedImage = await resizeImage(result.assets[0].uri);
-      setImage(resizedImage);
-      setImageSource('camera'); // Set the image source to camera
-    }
-  };
-
-  // Function to resize the image
-  const resizeImage = async (uri: string) => {
+  // Resize the selected image
+  const resizeImage = useCallback(async (uri: string) => {
     try {
       const manipResult = await ImageManipulator.manipulateAsync(
         uri,
-        [{ resize: { width: 800 } }], // Resize image to width of 800px, height will adjust proportionally
+        [{ resize: { width: 800 } }],
         { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
       );
       return manipResult.uri;
     } catch (error) {
-      console.error('Error resizing image:', error);
-      return uri; // Return the original URI if resizing fails
+      console.error('Image resize error:', error);
+      return uri;
     }
-  };
+  }, []);
 
-  // Handle map press to set custom coordinates
-  const handleMapPress = (event: MapPressEvent) => {
-    const { latitude, longitude } = event.nativeEvent.coordinate;
-    setLatitude(latitude);
-    setLongitude(longitude);
-    setLocation(`Lat: ${latitude}, Lon: ${longitude}`);
-  };
+  // Pick an image from the gallery
+  const pickImage = useCallback(async () => {
+    const hasPermission = await requestMediaPermission();
+    if (!hasPermission) {
+      Alert.alert('Permission', 'Gallery access is required to select an image.');
+      return;
+    }
 
-  // Upload prediction to backend
-  const uploadPrediction = async () => {
-    if (!image || !siteName || !location || location === 'Fetching location...') {
-      Alert.alert('Error', 'Please fill in all fields and select an image.');
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, // Corrected
+        allowsEditing: true,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets?.length > 0) {
+        const resizedImage = await resizeImage(result.assets[0].uri);
+        setImage(resizedImage);
+      }
+    } catch (error) {
+      console.error('Image pick error:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  }, [requestMediaPermission, resizeImage]);
+
+  // Take a picture using the camera
+  const takePicture = useCallback(async () => {
+    const hasPermission = await requestCameraPermission();
+    if (!hasPermission) {
+      Alert.alert('Permission', 'Camera access is required to take a picture.');
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, // Corrected
+        allowsEditing: true,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets?.length > 0) {
+        const resizedImage = await resizeImage(result.assets[0].uri);
+        setImage(resizedImage);
+      }
+    } catch (error) {
+      console.error('Camera capture error:', error);
+      Alert.alert('Error', 'Failed to capture image');
+    }
+  }, [requestCameraPermission, resizeImage]);
+
+  // Upload the prediction
+  const uploadPrediction = useCallback(async () => {
+    if (!image || !siteName || !location.description) {
+      Alert.alert('Validation', 'Please complete all fields and select an image.');
       return;
     }
 
     setIsLoading(true);
 
-    const formData = new FormData();
-    formData.append('image', {
-      uri: image,
-      name: 'prediction.jpg',
-      type: 'image/jpeg',
-    } as any);
-    formData.append('site_name', siteName);
-    formData.append('location', location);
-    formData.append('farmer_id', farmerId);
-
     try {
-      const token = await AsyncStorage.getItem('authToken');
+      const formData = new FormData();
+      formData.append('image', {
+        uri: image,
+        name: 'prediction.jpg',
+        type: 'image/jpeg',
+      } as any);
+      formData.append('site_name', siteName);
+      formData.append('location', location.description);
+      formData.append('latitude', location.latitude?.toString() || '');
+      formData.append('longitude', location.longitude?.toString() || '');
+      formData.append('farmer_id', farmerId);
+
       const response = await apiClient.post('predict/', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: token ? `Bearer ${token}` : '',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      if (response.status === 201) {
-        const data = response.data;
-        // Set the prediction result to state
-        setPredictionResult(data.result);
+      const data = response.data;
+      setPredictionResult(data.result);
+      onPredictionComplete?.(data.result);
 
-        // Display success message with prediction details
-        Alert.alert(
-          'Success',
-          `Prediction uploaded successfully!\nResult: ${data.result}\nLocation: ${data.location}\nSite Name: ${data.site_name}`
-        );
+      Alert.alert(
+        'Prediction Success',
+        `Result: ${data.result}\nLocation: ${data.location}\nSite: ${data.site_name}`
+      );
 
-        // Reset form fields
-        setSiteName('');
-        setLocation('Fetching location...');
-        setImage(null);
-      } else {
-        throw new Error(response.data.error || 'Unknown error occurred');
-      }
+      // Reset form
+      setSiteName('');
+      setImage(null);
     } catch (error: any) {
       console.error('Upload Error:', error);
-      Alert.alert('Error', error.response?.data?.error || 'Failed to upload prediction.');
+
+      if (error.response) {
+        switch (error.response.status) {
+          case 401:
+            Alert.alert(
+              'Authentication Error',
+              'Your session has expired. Please log in again.',
+              [{ text: 'OK', onPress: () => onAuthError?.() }]
+            );
+            break;
+          case 400:
+            Alert.alert('Upload Failed', error.response.data.detail || 'Invalid request');
+            break;
+          case 500:
+            Alert.alert('Server Error', 'An internal server error occurred');
+            break;
+          default:
+            Alert.alert('Error', `Server responded with status: ${error.response.status}`);
+        }
+      } else if (error.request) {
+        Alert.alert('Network Error', 'No response from server. Check your connection.');
+      } else {
+        Alert.alert('Error', error.message || 'An unexpected error occurred');
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [image, siteName, location, farmerId, onPredictionComplete, onAuthError]);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>Site Name</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Plant Detection</Text>
+
       <TextInput
         style={styles.input}
         value={siteName}
         onChangeText={setSiteName}
-        placeholder="Enter site name"
+        placeholder="Site Name"
       />
 
-      <Text style={styles.label}>Location</Text>
-      <Text style={styles.locationText}>{location}</Text>
+      <Text style={styles.locationLabel}>Current Location</Text>
+      <Text style={styles.locationText}>{location.description}</Text>
 
       <MapView
         style={styles.map}
         region={{
-          latitude: latitude || 37.78825,
-          longitude: longitude || -122.4324,
+          latitude: location.latitude || 37.78825,
+          longitude: location.longitude || -122.4324,
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         }}
-        onPress={handleMapPress}
       >
-        {latitude && longitude && <Marker coordinate={{ latitude, longitude }} />}
+        {location.latitude && location.longitude && (
+          <Marker
+            coordinate={{
+              latitude: location.latitude,
+              longitude: location.longitude,
+            }}
+          />
+        )}
       </MapView>
 
-      <TouchableOpacity onPress={pickImage} style={styles.button}>
-        <Text style={styles.buttonText}>Pick an Image</Text>
-      </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.actionButton} onPress={pickImage}>
+          <Text style={styles.buttonText}>Select Image</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity onPress={takePicture} style={styles.button}>
-        <Text style={styles.buttonText}>Take a Picture</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton} onPress={takePicture}>
+          <Text style={styles.buttonText}>Take Photo</Text>
+        </TouchableOpacity>
+      </View>
 
       {image && (
-        <View
-          style={[
-            styles.filePreview,
-            imageSource === 'camera' || imageSource === 'gallery' ? styles.greenBorder : {},
-          ]}
-        >
-          <Text style={styles.fileText}>File: {image.split('/').pop()}</Text>
+        <View style={styles.imagePreviewContainer}>
+          <Image source={{ uri: image }} style={styles.imagePreview} />
         </View>
       )}
 
       <TouchableOpacity
+        style={[styles.uploadButton, (isLoading || !image) && styles.disabledButton]}
         onPress={uploadPrediction}
-        style={[styles.uploadButton, isLoading && styles.disabledButton]}
-        disabled={isLoading}
+        disabled={isLoading || !image}
       >
         {isLoading ? (
           <ActivityIndicator color="#fff" />
@@ -232,70 +301,101 @@ const PredictUploadScreen: React.FC<{ farmerId: string }> = ({ farmerId }) => {
 
       {predictionResult && (
         <View style={styles.resultContainer}>
-          <Text style={styles.resultTitle}>Prediction Result:</Text>
+          <Text style={styles.resultTitle}>Prediction Result</Text>
           <Text style={styles.resultText}>{predictionResult}</Text>
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
-  label: { fontWeight: 'bold', marginVertical: 10 },
+  container: {
+    flexGrow: 1,
+    padding: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 10,
-    borderRadius: 5,
+    borderColor: '#ddd',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 15,
+    backgroundColor: 'white',
+  },
+  locationLabel: {
+    fontWeight: 'bold',
     marginBottom: 10,
   },
   locationText: {
-    marginVertical: 10,
-    color: '#555',
-    fontSize: 16,
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 15,
   },
   map: {
-    width: '100%',
-    height: 150,
+    height: 200,
     borderRadius: 10,
-    marginVertical: 10,
+    marginBottom: 15,
   },
-  button: {
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  actionButton: {
     backgroundColor: '#4CAF50',
     padding: 15,
-    marginVertical: 10,
-    borderRadius: 5,
+    borderRadius: 10,
+    flex: 0.48,
     alignItems: 'center',
   },
-  buttonText: { color: '#fff', fontSize: 16 },
-  filePreview: {
-    borderWidth: 1,
-    padding: 10,
-    marginVertical: 10,
-    borderRadius: 5,
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
-  fileText: { fontSize: 16 },
-  greenBorder: {
-    borderColor: 'green',
-    borderWidth: 3,
+  imagePreviewContainer: {
+    marginBottom: 15,
+    alignItems: 'center',
+  },
+  imagePreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: 10,
   },
   uploadButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#007BFF',
     padding: 15,
-    borderRadius: 5,
+    borderRadius: 10,
     alignItems: 'center',
   },
-  disabledButton: { backgroundColor: '#ddd' },
-  uploadButtonText: { color: '#fff', fontSize: 16 },
+  disabledButton: {
+    backgroundColor: '#cccccc',
+  },
+  uploadButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
   resultContainer: {
     marginTop: 20,
-    backgroundColor: '#f4f4f4',
-    padding: 10,
-    borderRadius: 5,
+    padding: 15,
+    backgroundColor: '#e0ffe0',
+    borderRadius: 10,
   },
-  resultTitle: { fontWeight: 'bold', fontSize: 18 },
-  resultText: { fontSize: 16, color: '#333' },
+  resultTitle: {
+    fontWeight: 'bold',
+    marginBottom: 10,
+    fontSize: 16,
+  },
+  resultText: {
+    fontSize: 14,
+  },
 });
 
 export default PredictUploadScreen;
