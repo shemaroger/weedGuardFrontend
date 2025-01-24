@@ -8,11 +8,17 @@ import {
   RefreshControl,
   Alert,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { useToken } from '../hooks/TokenStorageHook';
 import { BarChart, LineChart } from 'react-native-chart-kit';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const screenWidth = Dimensions.get('window').width;
+
+// Define a type for valid MaterialIcons names
+type MaterialIconName = 'assessment' | 'date-range' | 'location-on' | 'public' | 'notifications';
 
 interface AnalyticsData {
   overview: {
@@ -86,9 +92,9 @@ const AnalyticsDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#328A43" />
-      </View>
+      <LinearGradient colors={['#0F2027', '#203A43', '#2C5364']} style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4DB8FF" />
+      </LinearGradient>
     );
   }
 
@@ -97,8 +103,8 @@ const AnalyticsDashboard: React.FC = () => {
     datasets: [
       {
         data: analytics?.monthly_trends.map((item) => item.count) || [],
-        color: (opacity = 1) => `rgba(50, 138, 67, ${opacity})`, // Custom color for the line
-        strokeWidth: 2, // Line thickness
+        color: (opacity = 1) => `rgba(50, 205, 50, ${opacity})`, // Green color for the line
+        strokeWidth: 3, // Line thickness
       },
     ],
   };
@@ -109,108 +115,125 @@ const AnalyticsDashboard: React.FC = () => {
       {
         data: analytics?.weed_statistics.map((item) => item.count) || [],
         colors: [
-          (opacity = 1) => `rgba(50, 138, 67, ${opacity})`, // Custom colors for bars
-          (opacity = 1) => `rgba(255, 99, 132, ${opacity})`,
-          (opacity = 1) => `rgba(54, 162, 235, ${opacity})`,
+          (opacity = 1) => `rgba(50, 205, 50, ${opacity})`, // Green color for bars
+          (opacity = 1) => `rgba(34, 139, 34, ${opacity})`, // Darker green
+          (opacity = 1) => `rgba(0, 128, 0, ${opacity})`, // Even darker green
         ],
       },
     ],
   };
 
   return (
-    <View style={styles.container}>
+    <LinearGradient colors={['#0F2027', '#203A43', '#2C5364']} style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollViewContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4DB8FF" />
         }
       >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Analytics Dashboard</Text>
+          <TouchableOpacity onPress={() => Alert.alert('Notifications', 'No new notifications')}>
+            <MaterialIcons name={'notifications' as MaterialIconName} size={24} color="#32CD32" />
+          </TouchableOpacity>
+        </View>
+
         {/* Overview Cards */}
         <View style={styles.overviewContainer}>
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Total Predictions</Text>
-            <Text style={styles.cardValue}>
-              {analytics?.overview.total_predictions || 0}
-            </Text>
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Recent (30 days)</Text>
-            <Text style={styles.cardValue}>
-              {analytics?.overview.recent_predictions || 0}
-            </Text>
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Unique Locations</Text>
-            <Text style={styles.cardValue}>
-              {analytics?.overview.unique_locations || 0}
-            </Text>
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Unique Sites</Text>
-            <Text style={styles.cardValue}>
-              {analytics?.overview.unique_sites || 0}
-            </Text>
-          </View>
+          {[
+            {
+              title: 'Total Predictions',
+              icon: 'assessment' as MaterialIconName,
+              value: analytics?.overview.total_predictions || 0,
+            },
+            {
+              title: 'Recent (30 days)',
+              icon: 'date-range' as MaterialIconName,
+              value: analytics?.overview.recent_predictions || 0,
+            },
+            {
+              title: 'Unique Locations',
+              icon: 'location-on' as MaterialIconName,
+              value: analytics?.overview.unique_locations || 0,
+            },
+            {
+              title: 'Unique Sites',
+              icon: 'public' as MaterialIconName,
+              value: analytics?.overview.unique_sites || 0,
+            },
+          ].map((card, index) => (
+            <View key={index} style={styles.card}>
+              <MaterialIcons name={card.icon} size={24} color="#32CD32" style={styles.cardIcon} />
+              <Text style={styles.cardTitle}>{card.title}</Text>
+              <Text style={styles.cardValue}>{card.value}</Text>
+            </View>
+          ))}
         </View>
 
         {/* Monthly Trends Graph */}
         <View style={styles.graphContainer}>
           <Text style={styles.sectionTitle}>Monthly Trends</Text>
-          <LineChart
-            data={monthlyTrendData}
-            width={screenWidth - 32}
-            height={220}
-            chartConfig={{
-              backgroundColor: '#ffffff',
-              backgroundGradientFrom: '#ffffff',
-              backgroundGradientTo: '#ffffff',
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(50, 138, 67, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(102, 102, 102, ${opacity})`,
-              style: {
-                borderRadius: 8,
-              },
-              propsForDots: {
-                r: '6',
-                strokeWidth: '2',
-                stroke: '#328A43',
-              },
-            }}
-            bezier // Smooth line curve
-            style={styles.chart}
-          />
+          <View style={styles.chartWrapper}>
+            <LineChart
+              data={monthlyTrendData}
+              width={screenWidth - 32}
+              height={220}
+              chartConfig={{
+                backgroundColor: '#FFFFFF', // White background
+                backgroundGradientFrom: '#FFFFFF', // White gradient
+                backgroundGradientTo: '#FFFFFF', // White gradient
+                decimalPlaces: 0,
+                color: (opacity = 1) => `rgba(50, 205, 50, ${opacity})`, // Green color
+                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Black labels
+                style: {
+                  borderRadius: 8,
+                },
+                propsForDots: {
+                  r: '6',
+                  strokeWidth: '2',
+                  stroke: '#32CD32', // Green color
+                },
+              }}
+              bezier // Smooth line curve
+              style={styles.chart}
+            />
+          </View>
         </View>
 
         {/* Weed Statistics Bar Chart */}
         <View style={styles.graphContainer}>
           <Text style={styles.sectionTitle}>Weed Statistics</Text>
-          <BarChart
-            data={weedStatsData}
-            width={screenWidth - 32}
-            height={220}
-            chartConfig={{
-              backgroundColor: '#ffffff',
-              backgroundGradientFrom: '#ffffff',
-              backgroundGradientTo: '#ffffff',
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(50, 138, 67, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(102, 102, 102, ${opacity})`,
-            }}
-            style={styles.chart}
-            fromZero // Start Y-axis from zero
-            showBarTops // Show tops of bars
-          />
+          <View style={styles.chartWrapper}>
+            <BarChart
+              data={weedStatsData}
+              width={screenWidth - 32}
+              height={220}
+              yAxisLabel="" // Add this
+              yAxisSuffix="" // Add this
+              chartConfig={{
+                backgroundColor: '#FFFFFF', // White background
+                backgroundGradientFrom: '#FFFFFF', // White gradient
+                backgroundGradientTo: '#FFFFFF', // White gradient
+                decimalPlaces: 0,
+                color: (opacity = 1) => `rgba(50, 205, 50, ${opacity})`, // Green color
+                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Black labels
+              }}
+              style={styles.chart}
+              fromZero // Start Y-axis from zero
+              showBarTops // Show tops of bars
+            />
+          </View>
         </View>
       </ScrollView>
-    </View>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
   },
   loadingContainer: {
     flex: 1,
@@ -224,32 +247,44 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 16,
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
   overviewContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 24,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
     padding: 16,
     width: '48%',
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    alignItems: 'center',
+  },
+  cardIcon: {
+    marginBottom: 8,
   },
   cardTitle: {
     fontSize: 14,
-    color: '#666666',
+    color: '#FFFFFFFF',
+    opacity: 0.8,
+    textAlign: 'center',
   },
   cardValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#328A43',
+    color: '#32CD32', // Green color
     marginTop: 8,
   },
   graphContainer: {
@@ -259,7 +294,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
-    color: '#333333',
+    color: '#F5E5E5FF',
+  },
+  chartWrapper: {
+    backgroundColor: '#A8A2A2FF', // White background
+    borderRadius: 16,
+    padding: 16,
   },
   chart: {
     borderRadius: 8,

@@ -26,6 +26,7 @@ const PredictionsListScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const { token, storeToken, isLoading: tokenLoading } = useToken();
 
+  // Fetch predictions from the API
   const fetchPredictions = async () => {
     if (!token) {
       Alert.alert('Error', 'Authentication token not found. Please log in again.');
@@ -51,18 +52,27 @@ const PredictionsListScreen: React.FC = () => {
     }
   };
 
+  // Auto-refresh predictions every 30 seconds
   useEffect(() => {
     if (!tokenLoading && token) {
-      fetchPredictions();
+      fetchPredictions(); // Initial fetch
+
+      // Set up auto-refresh interval
+      const interval = setInterval(fetchPredictions, 30000); // 30 seconds
+
+      // Clean up interval on component unmount
+      return () => clearInterval(interval);
     }
   }, [token, tokenLoading]);
 
+  // Manual refresh handler
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchPredictions();
     setRefreshing(false);
   };
 
+  // Render each prediction item
   const renderPredictionItem = ({ item }: { item: Prediction }) => (
     <TouchableOpacity
       style={styles.predictionCard}
@@ -84,6 +94,7 @@ const PredictionsListScreen: React.FC = () => {
     </TouchableOpacity>
   );
 
+  // Show loading spinner if token is still loading
   if (tokenLoading) {
     return (
       <View style={styles.container}>
