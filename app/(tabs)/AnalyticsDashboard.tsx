@@ -14,10 +14,10 @@ import { useToken } from '../hooks/TokenStorageHook';
 import { BarChart, LineChart } from 'react-native-chart-kit';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
+import apiClient from '../services/api'; // Use the axios instance
 
 const screenWidth = Dimensions.get('window').width;
 
-// Define a type for valid MaterialIcons names
 type MaterialIconName = 'assessment' | 'date-range' | 'location-on' | 'public' | 'notifications';
 
 interface AnalyticsData {
@@ -58,20 +58,8 @@ const AnalyticsDashboard: React.FC = () => {
     }
 
     try {
-      const response = await fetch('http://192.168.8.107:8000/api/analytics/', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setAnalytics(data);
+      const response = await apiClient.get('/analytics/');
+      setAnalytics(response.data);
     } catch (error) {
       console.error('Error fetching analytics:', error);
       Alert.alert('Error', 'Failed to load analytics data. Please try again later.');
@@ -98,27 +86,30 @@ const AnalyticsDashboard: React.FC = () => {
     );
   }
 
+  if (!analytics) {
+    return (
+      <LinearGradient colors={['#0F2027', '#203A43', '#2C5364']} style={styles.loadingContainer}>
+        <Text style={styles.errorText}>No analytics data available.</Text>
+      </LinearGradient>
+    );
+  }
+
   const monthlyTrendData = {
-    labels: analytics?.monthly_trends.map((item) => item.month) || [],
+    labels: analytics.monthly_trends.map((item) => item.month),
     datasets: [
       {
-        data: analytics?.monthly_trends.map((item) => item.count) || [],
-        color: (opacity = 1) => `rgba(50, 205, 50, ${opacity})`, // Green color for the line
+        data: analytics.monthly_trends.map((item) => item.count),
+        color: (opacity = 1) => `rgba(50, 205, 50, ${opacity})`, // Green color
         strokeWidth: 3, // Line thickness
       },
     ],
   };
 
   const weedStatsData = {
-    labels: analytics?.weed_statistics.map((item) => item.result) || [],
+    labels: analytics.weed_statistics.map((item) => item.result),
     datasets: [
       {
-        data: analytics?.weed_statistics.map((item) => item.count) || [],
-        colors: [
-          (opacity = 1) => `rgba(50, 205, 50, ${opacity})`, // Green color for bars
-          (opacity = 1) => `rgba(34, 139, 34, ${opacity})`, // Darker green
-          (opacity = 1) => `rgba(0, 128, 0, ${opacity})`, // Even darker green
-        ],
+        data: analytics.weed_statistics.map((item) => item.count),
       },
     ],
   };
@@ -136,7 +127,7 @@ const AnalyticsDashboard: React.FC = () => {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Analytics Dashboard</Text>
           <TouchableOpacity onPress={() => Alert.alert('Notifications', 'No new notifications')}>
-            <MaterialIcons name={'notifications' as MaterialIconName} size={24} color="#32CD32" />
+            <MaterialIcons name="notifications" size={24} color="#32CD32" />
           </TouchableOpacity>
         </View>
 
@@ -146,22 +137,22 @@ const AnalyticsDashboard: React.FC = () => {
             {
               title: 'Total Predictions',
               icon: 'assessment' as MaterialIconName,
-              value: analytics?.overview.total_predictions || 0,
+              value: analytics.overview.total_predictions,
             },
             {
               title: 'Recent (30 days)',
               icon: 'date-range' as MaterialIconName,
-              value: analytics?.overview.recent_predictions || 0,
+              value: analytics.overview.recent_predictions,
             },
             {
               title: 'Unique Locations',
               icon: 'location-on' as MaterialIconName,
-              value: analytics?.overview.unique_locations || 0,
+              value: analytics.overview.unique_locations,
             },
             {
               title: 'Unique Sites',
               icon: 'public' as MaterialIconName,
-              value: analytics?.overview.unique_sites || 0,
+              value: analytics.overview.unique_sites,
             },
           ].map((card, index) => (
             <View key={index} style={styles.card}>
@@ -181,22 +172,22 @@ const AnalyticsDashboard: React.FC = () => {
               width={screenWidth - 32}
               height={220}
               chartConfig={{
-                backgroundColor: '#FFFFFF', // White background
-                backgroundGradientFrom: '#FFFFFF', // White gradient
-                backgroundGradientTo: '#FFFFFF', // White gradient
+                backgroundColor: '#FFFFFF',
+                backgroundGradientFrom: '#FFFFFF',
+                backgroundGradientTo: '#FFFFFF',
                 decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(50, 205, 50, ${opacity})`, // Green color
-                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Black labels
+                color: (opacity = 1) => `rgba(50, 205, 50, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
                 style: {
                   borderRadius: 8,
                 },
                 propsForDots: {
                   r: '6',
                   strokeWidth: '2',
-                  stroke: '#32CD32', // Green color
+                  stroke: '#32CD32',
                 },
               }}
-              bezier // Smooth line curve
+              bezier
               style={styles.chart}
             />
           </View>
@@ -210,19 +201,19 @@ const AnalyticsDashboard: React.FC = () => {
               data={weedStatsData}
               width={screenWidth - 32}
               height={220}
-              yAxisLabel="" // Add this
-              yAxisSuffix="" // Add this
+              yAxisLabel=""
+              yAxisSuffix=""
               chartConfig={{
-                backgroundColor: '#FFFFFF', // White background
-                backgroundGradientFrom: '#FFFFFF', // White gradient
-                backgroundGradientTo: '#FFFFFF', // White gradient
+                backgroundColor: '#FFFFFF',
+                backgroundGradientFrom: '#FFFFFF',
+                backgroundGradientTo: '#FFFFFF',
                 decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(50, 205, 50, ${opacity})`, // Green color
-                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // Black labels
+                color: (opacity = 1) => `rgba(50, 205, 50, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
               }}
               style={styles.chart}
-              fromZero // Start Y-axis from zero
-              showBarTops // Show tops of bars
+              fromZero
+              showBarTops
             />
           </View>
         </View>
@@ -239,6 +230,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  errorText: {
+    color: '#FFFFFF',
+    fontSize: 16,
   },
   scrollView: {
     flex: 1,
@@ -284,7 +279,7 @@ const styles = StyleSheet.create({
   cardValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#32CD32', // Green color
+    color: '#32CD32',
     marginTop: 8,
   },
   graphContainer: {
@@ -297,7 +292,7 @@ const styles = StyleSheet.create({
     color: '#F5E5E5FF',
   },
   chartWrapper: {
-    backgroundColor: '#A8A2A2FF', // White background
+    backgroundColor: '#A8A2A2FF',
     borderRadius: 16,
     padding: 16,
   },
